@@ -18,11 +18,12 @@ func (e Error) Error() string {
 }
 
 // GenerateStdlibHTTPResponse added functionality to self returning appropriate error message, setting accurate http status codes, and error code
-func (e *Error) GenerateStdlibHTTPResponse() *stdhttp.StandardResponse {
+func (e *Error) GenerateStdlibHTTPResponse(data any) *stdhttp.StandardResponse {
 	return &stdhttp.StandardResponse{
 		Success: false,
 		Message: e.Message,
 		Status:  e.Code,
 		Error:   e.Type.Error(),
+		Data:    data,
 	}
 }

@@ -108,7 +108,7 @@ func TestRest_handleSignUp(t *testing.T) {
 				rec := httptest.NewRecorder()
 				ectx := e.NewContext(req, rec)
 
-				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, ErrBadRequest.GenerateStdlibHTTPResponse(), nil).Times(1).Return(nil)
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil).Times(1).Return(nil)
 
 				err := restService.handleSignUp()(ectx)
 				assert.NoError(t, err)
@@ -150,7 +150,7 @@ func TestRest_handleSignUp(t *testing.T) {
 					Cause:   errors.New("error internal"),
 					Code:    http.StatusInternalServerError,
 				})
-				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, ErrInternal.GenerateStdlibHTTPResponse(), nil).Times(1).Return(nil)
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, ErrInternal.GenerateStdlibHTTPResponse(nil), nil).Times(1).Return(nil)
 
 				err := restService.handleSignUp()(ectx)
 				assert.NoError(t, err)
@@ -194,7 +194,7 @@ func TestRest_handleSignUp(t *testing.T) {
 				}
 
 				mockUserUsecase.EXPECT().SignUp(ctx, validRequest).Times(1).Return(signUpResp, cerr)
-				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, cerr.GenerateStdlibHTTPResponse(), nil).Times(1).Return(nil)
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, cerr.GenerateStdlibHTTPResponse(nil), nil).Times(1).Return(nil)
 
 				err := restService.handleSignUp()(ectx)
 				assert.NoError(t, err)

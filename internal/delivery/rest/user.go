@@ -17,16 +17,16 @@ func (s *service) handleSignUp() echo.HandlerFunc {
 			Signature string             `json:"signature"`
 		}{}
 		if err := c.Bind(&input); err != nil {
-			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrBadRequest.GenerateStdlibHTTPResponse(), nil)
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil)
 		}
 
 		res, custerr := s.userUsecase.SignUp(c.Request().Context(), input.Request)
 		switch custerr.Type {
 		default:
-			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, custerr.GenerateStdlibHTTPResponse(), nil)
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, custerr.GenerateStdlibHTTPResponse(nil), nil)
 		case usecase.ErrInternal:
 			logrus.WithContext(c.Request().Context()).WithError(custerr.Cause).Error("failed to perform signup new user")
-			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrInternal.GenerateStdlibHTTPResponse(), nil)
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrInternal.GenerateStdlibHTTPResponse(nil), nil)
 		case nil:
 			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, &stdhttp.StandardResponse{
 				Success: true,
