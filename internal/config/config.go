@@ -83,7 +83,12 @@ func Env() string {
 
 // LogLevel returns application log level
 func LogLevel() string {
-	return viper.GetString("log.level")
+	return viper.GetString("server.log.level")
+}
+
+// ServerPort returns application server port
+func ServerPort() string {
+	return fmt.Sprintf(":%s", viper.GetString("server.port"))
 }
 
 // SendinblueAPIKey get API key for send in blue
@@ -127,4 +132,24 @@ func MailgunPublicAPIKey() string {
 // MailgunSenderEmail mailgun sender email address, shown in the receipient as the sender email
 func MailgunSenderEmail() string {
 	return viper.GetString("mailgun.sender_email")
+}
+
+// PinExpiryMinutes return pin expiry in minutes. Default to 5 minutes
+func PinExpiryMinutes() int {
+	minutes := viper.GetInt("server.pin.expiry_minutes")
+	if minutes <= 0 {
+		return 5
+	}
+
+	return minutes
+}
+
+// PinMaxRetry return max retry for pin validation. Default to 3
+func PinMaxRetry() int {
+	tries := viper.GetInt("server.pin.max_tries")
+	if tries <= 0 {
+		return 3
+	}
+
+	return tries
 }
