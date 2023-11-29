@@ -29,7 +29,7 @@ func (r *pinRepo) Create(ctx context.Context, pin *model.Pin, tx *gorm.DB) error
 		tx = r.db
 	}
 
-	if err := tx.WithContext(ctx).Model(&model.Pin{}).Create(pin).Error; err != nil {
+	if err := tx.WithContext(ctx).Create(pin).Error; err != nil {
 		logger.WithError(err).Error("failed to write pins data to db")
 		return err
 	}
@@ -44,7 +44,7 @@ func (r *pinRepo) FindByID(ctx context.Context, id uuid.UUID) (*model.Pin, error
 	})
 
 	pin := &model.Pin{}
-	err := r.db.WithContext(ctx).Model(&model.Pin{}).Where("id = ?", id).Take(pin).Error
+	err := r.db.WithContext(ctx).Take(pin, "id = ?", id).Error
 	switch err {
 	default:
 		logger.WithError(err).Error("failed to read pin data from db")
