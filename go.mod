@@ -10,6 +10,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/hibiken/asynq v0.24.1
 	github.com/kumparan/go-utils v1.30.0
+	github.com/labstack/echo/v4 v4.10.2
 	github.com/lib/pq v1.10.7
 	github.com/rubenv/sql-migrate v1.5.2
 	github.com/sendinblue/APIv3-go-library v2.0.0+incompatible
@@ -17,7 +18,8 @@ require (
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/viper v1.3.2
 	github.com/stretchr/testify v1.8.2
-	github.com/sweet-go/stdlib v1.2.1-0.20231126151001-6a53cbd416ad
+	github.com/sweet-go/stdlib v1.2.1-0.20231129072459-a75600e4a037
+	golang.org/x/crypto v0.7.0
 	golang.org/x/time v0.3.0
 	gopkg.in/guregu/null.v4 v4.0.0
 	gorm.io/driver/postgres v1.5.0
@@ -43,6 +45,8 @@ require (
 	github.com/go-gorp/gorp/v3 v3.1.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
+	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
+	github.com/golang-jwt/jwt/v4 v4.4.3 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/goodsign/monday v1.0.0 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
@@ -57,10 +61,14 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/json-iterator/go v1.1.10 // indirect
+	github.com/labstack/echo-jwt/v4 v4.1.0 // indirect
+	github.com/labstack/gommon v0.4.0 // indirect
 	github.com/leekchan/accounting v0.3.1 // indirect
 	github.com/leodido/go-urn v1.2.4 // indirect
 	github.com/magiconair/properties v1.8.0 // indirect
 	github.com/mailgun/mailgun-go/v4 v4.8.2 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/microcosm-cc/bluemonday v1.0.19 // indirect
 	github.com/mitchellh/mapstructure v1.1.2 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
@@ -76,8 +84,9 @@ require (
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/jwalterweatherman v1.0.0 // indirect
 	github.com/spf13/pflag v1.0.3 // indirect
+	github.com/valyala/bytebufferpool v1.0.0 // indirect
+	github.com/valyala/fasttemplate v1.2.2 // indirect
 	github.com/yuin/gopher-lua v1.1.0 // indirect
-	golang.org/x/crypto v0.7.0 // indirect
 	golang.org/x/net v0.8.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20180821212333-d2e6202438be // indirect
 	golang.org/x/sys v0.6.0 // indirect
