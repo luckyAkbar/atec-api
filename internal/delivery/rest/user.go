@@ -17,7 +17,6 @@ func (s *service) handleSignUp() echo.HandlerFunc {
 			Signature string             `json:"signature"`
 		}{}
 		if err := c.Bind(&input); err != nil {
-			logrus.Info("waokwa", err)
 			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrBadRequest.GenerateStdlibHTTPResponse(), nil)
 		}
 
