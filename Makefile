@@ -67,10 +67,26 @@ internal/model/mock/mock_email_repository.go:
 internal/model/mock/mock_worker_client.go:
 	mockgen -destination=internal/model/mock/mock_worker_client.go -package=mock github.com/luckyAkbar/atec-api/internal/model WorkerClient
 
+internal/model/mock/mock_pin_repository.go:
+	mockgen -destination=internal/model/mock/mock_pin_repository.go -package=mock github.com/luckyAkbar/atec-api/internal/model PinRepository
+
+internal/model/mock/mock_user_usecase.go:
+	mockgen -destination=internal/model/mock/mock_user_usecase.go -package=mock github.com/luckyAkbar/atec-api/internal/model UserUsecase
+
+internal/model/mock/mock_user_repository.go:
+	mockgen -destination=internal/model/mock/mock_user_repository.go -package=mock github.com/luckyAkbar/atec-api/internal/model UserRepository
+
+internal/common/mock/mock_shared_cryptor.go:
+	mockgen -destination=internal/common/mock/mock_shared_cryptor.go -package=mock github.com/luckyAkbar/atec-api/internal/common SharedCryptor
+
 mockgen: clean \
 	internal/model/mock/mock_email_usecase.go \
 	internal/model/mock/mock_email_repository.go \
-	internal/model/mock/mock_worker_client.go
+	internal/model/mock/mock_worker_client.go \
+	internal/model/mock/mock_pin_repository.go \
+	internal/model/mock/mock_user_usecase.go \
+	internal/model/mock/mock_user_repository.go \
+	internal/common/mock/mock_shared_cryptor.go
 
 clean:
 	find -type f -name 'mock_*.go' -delete
