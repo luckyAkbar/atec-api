@@ -1,0 +1,39 @@
+env: "LOCAL"
+
+server:
+  port: "8087"
+  pin:
+    max_tries: 3
+    expiry_minutes: 5
+  log:
+    level: "DEBUG"
+
+postgres:
+  host: ""
+  db: ""
+  user: ""
+  pw: ""
+  port: "5432"
+  ssl_mode: "disable"
+
+worker:
+  log_level: "DEBUG"
+  concurency: 1
+  broker_host: "redis://:6379/2"
+  limiter:
+    retry_interval_seconds: 3s
+    limit: 100
+    burst: 150
+
+mailgun:
+  is_activated: true
+  domain: "mailgun.trusty.my.id"
+  private_api_key: ""
+  public_api_key: ""
+  sender_email: ""
+
+sendinblue:
+  api_key: ""
+  is_activated: false
+  sender_name: "ATEC service"
+  sender_email: ""
