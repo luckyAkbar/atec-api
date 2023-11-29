@@ -26,7 +26,7 @@ func (r *emailRepo) Create(ctx context.Context, email *model.Email) error {
 		"data": helper.Dump(email),
 	})
 
-	if err := r.db.WithContext(ctx).Model(&model.Email{}).Create(email).Error; err != nil {
+	if err := r.db.WithContext(ctx).Create(email).Error; err != nil {
 		logger.WithError(err).Error("failed to write emails data to db")
 		return err
 	}
@@ -41,7 +41,7 @@ func (r *emailRepo) FindByID(ctx context.Context, id uuid.UUID) (*model.Email, e
 	})
 
 	email := &model.Email{}
-	err := r.db.WithContext(ctx).Model(&model.Email{}).Where("id = ?", id).Take(email).Error
+	err := r.db.WithContext(ctx).Take(email, "id = ?", id).Error
 	switch err {
 	default:
 		logger.WithError(err).Error("failed to read email data from db")

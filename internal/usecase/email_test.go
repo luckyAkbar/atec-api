@@ -134,7 +134,9 @@ func TestEmailUsecase_Register(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt.MockFn()
-		tt.Run()
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
 	}
 }
