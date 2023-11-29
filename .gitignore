@@ -1,2 +1,3 @@
 config.yaml
 internal/console/testing.go
+private.pem
