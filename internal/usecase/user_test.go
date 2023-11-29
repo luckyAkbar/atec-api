@@ -12,6 +12,7 @@ import (
 	"github.com/luckyAkbar/atec-api/internal/model"
 	"github.com/luckyAkbar/atec-api/internal/model/mock"
 	"github.com/luckyAkbar/atec-api/internal/repository"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -249,8 +250,19 @@ func TestUserUsecase_SignUp(t *testing.T) {
 }
 
 func TestUserUsecase_generatePinForOTP(t *testing.T) {
+	viper.Set("env", "definitly-production")
 	for i := 0; i < 1000000; i++ {
 		res := generatePinForOTP()
 		assert.Len(t, res, 6)
 	}
+
+	viper.Reset()
+
+	viper.Set("env", "LOcAL")
+	for i := 0; i < 1000000; i++ {
+		res := generatePinForOTP()
+		assert.Len(t, res, 6)
+		assert.Equal(t, res, "123456")
+	}
+	viper.Reset()
 }

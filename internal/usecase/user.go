@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -178,6 +179,11 @@ func (u *userUc) SignUp(ctx context.Context, input *model.SignUpInput) (*model.S
 }
 
 func generatePinForOTP() string {
+	// was made for easier testing on a non production environment
+	if strings.ToLower(config.Env()) == "local" {
+		return "123456"
+	}
+
 	max := 6
 	b := make([]byte, max)
 	chars := [...]byte{'1', '2', '3', '4', '5', '6', '7', '8', '9', '0'}
