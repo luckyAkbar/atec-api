@@ -214,3 +214,191 @@ func TestRest_handleSignUp(t *testing.T) {
 		})
 	}
 }
+
+func TestRest_handleAccountVerification(t *testing.T) {
+	ctx := context.TODO()
+	ctrl := gomock.NewController(t)
+	mockAPIRespGen := httpMock.NewMockAPIResponseGenerator(ctrl)
+	mockUserUsecase := mock.NewMockUserUsecase(ctrl)
+	input := &model.AccountVerificationInput{
+		PinValidationID: uuid.MustParse("1af3b478-ab30-468a-9518-4434d8f1b8f8"),
+		Pin:             "123456",
+	}
+	output := &model.SuccessAccountVerificationResponse{
+		ID:        uuid.New(),
+		Email:     "test@email.com",
+		Username:  "username",
+		IsActive:  true,
+		Role:      model.RoleUser,
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
+	}
+
+	tests := []common.TestStructure{
+		{
+			Name:   "success",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					userUsecase:          mockUserUsecase,
+				}
+				req := httptest.NewRequest(http.MethodPost, "/users/accounts/validation/", strings.NewReader(`
+					{
+						"request": {
+							"pinValidationID": "1af3b478-ab30-468a-9518-4434d8f1b8f8",
+							"pin": "123456"
+						},
+						"signature": "ok"
+					}
+				`))
+				req.Header.Set("Content-Type", "application/json")
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+
+				mockUserUsecase.EXPECT().VerifyAccount(ctx, input).Times(1).Return(output, nil, &common.Error{
+					Type: nil,
+				})
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, &stdhttp.StandardResponse{
+					Success: true,
+					Message: "success",
+					Status:  http.StatusOK,
+					Data:    output,
+				}, nil)
+
+				err := restService.handleAccountVerification()(ectx)
+				assert.NoError(t, err)
+
+				assert.Equal(t, rec.Result().StatusCode, http.StatusOK)
+			},
+		},
+		{
+			Name:   "binding failed",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					userUsecase:          mockUserUsecase,
+				}
+				req := httptest.NewRequest(http.MethodPost, "/users/accounts/validation/", strings.NewReader(`
+					{
+						"request": {
+							"pinValidationID": "1af3b478-ab30-468a-9518-4434d8f1b8f8",
+							"pin": "123456"
+						} <- invalid payload here
+						"signature": "ok"
+					}
+				`))
+				req.Header.Set("Content-Type", "application/json")
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil)
+
+				err := restService.handleAccountVerification()(ectx)
+				assert.NoError(t, err)
+
+				assert.Equal(t, rec.Result().StatusCode, http.StatusOK)
+			},
+		},
+		{
+			Name:   "usecase returning error internal",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					userUsecase:          mockUserUsecase,
+				}
+				req := httptest.NewRequest(http.MethodPost, "/users/accounts/validation/", strings.NewReader(`
+					{
+						"request": {
+							"pinValidationID": "1af3b478-ab30-468a-9518-4434d8f1b8f8",
+							"pin": "123456"
+						},
+						"signature": "ok"
+					}
+				`))
+				req.Header.Set("Content-Type", "application/json")
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+
+				mockUserUsecase.EXPECT().VerifyAccount(ctx, input).Times(1).Return(output, nil, &common.Error{
+					Message: "internal server error",
+					Cause:   errors.New("err internal"),
+					Type:    usecase.ErrInternal,
+					Code:    http.StatusInternalServerError,
+				})
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, ErrInternal.GenerateStdlibHTTPResponse(nil), nil)
+
+				err := restService.handleAccountVerification()(ectx)
+				assert.NoError(t, err)
+
+				assert.Equal(t, rec.Result().StatusCode, http.StatusOK)
+			},
+		},
+		{
+			Name:   "usecase returning other specific error",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					userUsecase:          mockUserUsecase,
+				}
+				req := httptest.NewRequest(http.MethodPost, "/users/accounts/validation/", strings.NewReader(`
+					{
+						"request": {
+							"pinValidationID": "1af3b478-ab30-468a-9518-4434d8f1b8f8",
+							"pin": "123456"
+						},
+						"signature": "ok"
+					}
+				`))
+				req.Header.Set("Content-Type", "application/json")
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+
+				cerr := &common.Error{
+					Message: "input invalid",
+					Cause:   errors.New("input invalid"),
+					Type:    usecase.ErrInputAccountVerificationInvalid,
+					Code:    http.StatusBadRequest,
+				}
+
+				failed := &model.FailedAccountVerificationResponse{
+					RemainingAttempts: 1,
+				}
+
+				mockUserUsecase.EXPECT().VerifyAccount(ctx, input).Times(1).Return(output, failed, cerr)
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, cerr.GenerateStdlibHTTPResponse(failed), nil)
+
+				err := restService.handleAccountVerification()(ectx)
+				assert.NoError(t, err)
+
+				assert.Equal(t, rec.Result().StatusCode, http.StatusOK)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}

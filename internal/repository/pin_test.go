@@ -25,13 +25,13 @@ func TestPinRepository_Create(t *testing.T) {
 	userID := uuid.New()
 	now := time.Now().UTC()
 	pin := &model.Pin{
-		ID:          uuid.New(),
-		Pin:         "pin",
-		UserID:      userID,
-		ExpiredAt:   time.Now().Add(time.Minute * time.Duration(config.PinExpiryMinutes())).UTC(),
-		FailedCount: 0,
-		CreatedAt:   now,
-		UpdatedAt:   now,
+		ID:                uuid.New(),
+		Pin:               "pin",
+		UserID:            userID,
+		ExpiredAt:         time.Now().Add(time.Minute * time.Duration(config.PinExpiryMinutes())).UTC(),
+		RemainingAttempts: config.PinMaxRetry(),
+		CreatedAt:         now,
+		UpdatedAt:         now,
 	}
 
 	tests := []common.TestStructure{
@@ -39,7 +39,7 @@ func TestPinRepository_Create(t *testing.T) {
 			Name: "ok",
 			MockFn: func() {
 				mock.ExpectBegin()
-				mock.ExpectExec(`^INSERT INTO "pins"`).WithArgs(pin.ID, pin.Pin, pin.UserID, pin.ExpiredAt, pin.FailedCount, pin.CreatedAt, pin.UpdatedAt, pin.DeletedAt).WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectExec(`^INSERT INTO "pins"`).WithArgs(pin.ID, pin.Pin, pin.UserID, pin.ExpiredAt, pin.RemainingAttempts, pin.CreatedAt, pin.UpdatedAt, pin.DeletedAt).WillReturnResult(sqlmock.NewResult(1, 1))
 				mock.ExpectCommit()
 			},
 			Run: func() {
@@ -51,7 +51,7 @@ func TestPinRepository_Create(t *testing.T) {
 			Name: "err db",
 			MockFn: func() {
 				mock.ExpectBegin()
-				mock.ExpectExec(`^INSERT INTO "pins"`).WithArgs(pin.ID, pin.Pin, pin.UserID, pin.ExpiredAt, pin.FailedCount, pin.CreatedAt, pin.UpdatedAt, pin.DeletedAt).WillReturnError(errors.New("db err"))
+				mock.ExpectExec(`^INSERT INTO "pins"`).WithArgs(pin.ID, pin.Pin, pin.UserID, pin.ExpiredAt, pin.RemainingAttempts, pin.CreatedAt, pin.UpdatedAt, pin.DeletedAt).WillReturnError(errors.New("db err"))
 				mock.ExpectRollback()
 			},
 			Run: func() {

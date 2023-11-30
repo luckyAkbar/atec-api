@@ -5,8 +5,10 @@ import (
 	"errors"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
+	"github.com/google/uuid"
 	"github.com/luckyAkbar/atec-api/internal/common"
 	commonMock "github.com/luckyAkbar/atec-api/internal/common/mock"
 	"github.com/luckyAkbar/atec-api/internal/model"
@@ -249,6 +251,182 @@ func TestUserUsecase_SignUp(t *testing.T) {
 	}
 }
 
+func TestUserUsecase_VerifyAccount(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	//dbmock := kit.DBmock
+	ctrl := gomock.NewController(t)
+
+	mockUserRepo := mock.NewMockUserRepository(ctrl)
+	mockPinRepo := mock.NewMockPinRepository(ctrl)
+	mockEmailUsecase := mock.NewMockEmailUsecase(ctrl)
+	mockSharedCryptor := commonMock.NewMockSharedCryptor(ctrl)
+
+	ctx := context.Background()
+
+	uc := NewUserUsecase(mockUserRepo, mockPinRepo, mockSharedCryptor, mockEmailUsecase, kit.DB)
+
+	input := &model.AccountVerificationInput{
+		PinValidationID: uuid.New(),
+		Pin:             "123456",
+	}
+
+	pin := &model.Pin{
+		ID:                uuid.New(),
+		Pin:               "hmmz",
+		UserID:            uuid.New(),
+		ExpiredAt:         time.Now().Add(time.Hour * 24).UTC(),
+		RemainingAttempts: 3,
+		CreatedAt:         time.Now().UTC(),
+		UpdatedAt:         time.Now().UTC(),
+	}
+
+	user := &model.User{
+		ID:        uuid.New(),
+		Email:     "test@email.com",
+		Password:  "hmmz",
+		Username:  "okelah",
+		IsActive:  true,
+		Role:      model.RoleUser,
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
+	}
+
+	tests := []common.TestStructure{
+		{
+			Name:   "missing input",
+			MockFn: func() {},
+			Run: func() {
+				_, _, err := uc.VerifyAccount(ctx, &model.AccountVerificationInput{})
+				assert.Error(t, err)
+				assert.Equal(t, err.Code, http.StatusBadRequest)
+				assert.Equal(t, err.Type, ErrInputAccountVerificationInvalid)
+
+			},
+		},
+		{
+			Name: "pin was not found on db",
+			MockFn: func() {
+				mockPinRepo.EXPECT().FindByID(ctx, input.PinValidationID).Times(1).Return(nil, repository.ErrNotFound)
+			},
+			Run: func() {
+				_, _, err := uc.VerifyAccount(ctx, input)
+				assert.Error(t, err)
+				assert.Equal(t, err.Code, http.StatusNotFound)
+				assert.Equal(t, err.Type, ErrResourceNotFound)
+
+			},
+		},
+		{
+			Name: "failed to query pin",
+			MockFn: func() {
+				mockPinRepo.EXPECT().FindByID(ctx, input.PinValidationID).Times(1).Return(nil, errors.New("db err"))
+			},
+			Run: func() {
+				_, _, err := uc.VerifyAccount(ctx, input)
+				assert.Error(t, err)
+				assert.Equal(t, err.Code, http.StatusInternalServerError)
+				assert.Equal(t, err.Type, ErrInternal)
+
+			},
+		},
+		{
+			Name: "pin expired by time",
+			MockFn: func() {
+				mockPinRepo.EXPECT().FindByID(ctx, input.PinValidationID).Times(1).Return(&model.Pin{
+					ExpiredAt: time.Now().Add(-time.Hour * 24),
+				}, nil)
+			},
+			Run: func() {
+				_, _, err := uc.VerifyAccount(ctx, input)
+				assert.Error(t, err)
+				assert.Equal(t, err.Code, http.StatusBadRequest)
+				assert.Equal(t, err.Type, ErrPinExpired)
+
+			},
+		},
+		{
+			Name: "pin has 0 remaining attempts",
+			MockFn: func() {
+				mockPinRepo.EXPECT().FindByID(ctx, input.PinValidationID).Times(1).Return(&model.Pin{
+					RemainingAttempts: 0,
+				}, nil)
+			},
+			Run: func() {
+				_, _, err := uc.VerifyAccount(ctx, input)
+				assert.Error(t, err)
+				assert.Equal(t, err.Code, http.StatusBadRequest)
+				assert.Equal(t, err.Type, ErrPinExpired)
+
+			},
+		},
+		{
+			Name: "hash verification failed also failed to decrement the remaining attempts",
+			MockFn: func() {
+				mockPinRepo.EXPECT().FindByID(ctx, input.PinValidationID).Times(1).Return(pin, nil)
+				mockSharedCryptor.EXPECT().CompareHash(gomock.Any(), []byte(input.Pin)).Times(1).Return(errors.New("verification failed"))
+				mockPinRepo.EXPECT().DecrementRemainingAttempts(ctx, pin.ID).Times(1).Return(errors.New("db err"))
+			},
+			Run: func() {
+				_, _, err := uc.VerifyAccount(ctx, input)
+				assert.Error(t, err)
+				assert.Equal(t, err.Code, http.StatusInternalServerError)
+				assert.Equal(t, err.Type, ErrInternal)
+
+			},
+		},
+		{
+			Name: "hash verification failed yet success to decrement the remaining attempts",
+			MockFn: func() {
+				mockPinRepo.EXPECT().FindByID(ctx, input.PinValidationID).Times(1).Return(pin, nil)
+				mockSharedCryptor.EXPECT().CompareHash(gomock.Any(), []byte(input.Pin)).Times(1).Return(errors.New("verification failed"))
+				mockPinRepo.EXPECT().DecrementRemainingAttempts(ctx, pin.ID).Times(1).Return(nil)
+			},
+			Run: func() {
+				_, failedResp, err := uc.VerifyAccount(ctx, input)
+				assert.Error(t, err)
+				assert.Equal(t, err.Code, http.StatusBadRequest)
+				assert.Equal(t, err.Type, ErrPinInvalid)
+				assert.Equal(t, failedResp.RemainingAttempts, pin.RemainingAttempts-1)
+			},
+		},
+		{
+			Name: "failed when updating the user's active status",
+			MockFn: func() {
+				mockPinRepo.EXPECT().FindByID(ctx, input.PinValidationID).Times(1).Return(pin, nil)
+				mockSharedCryptor.EXPECT().CompareHash(gomock.Any(), []byte(input.Pin)).Times(1).Return(nil)
+				mockUserRepo.EXPECT().UpdateActiveStatus(ctx, pin.UserID, true).Times(1).Return(nil, errors.New("db err"))
+			},
+			Run: func() {
+				_, _, err := uc.VerifyAccount(ctx, input)
+				assert.Error(t, err)
+				assert.Equal(t, err.Code, http.StatusInternalServerError)
+				assert.Equal(t, err.Type, ErrInternal)
+			},
+		},
+		{
+			Name: "ok",
+			MockFn: func() {
+				mockPinRepo.EXPECT().FindByID(ctx, input.PinValidationID).Times(1).Return(pin, nil)
+				mockSharedCryptor.EXPECT().CompareHash(gomock.Any(), []byte(input.Pin)).Times(1).Return(nil)
+				mockUserRepo.EXPECT().UpdateActiveStatus(ctx, pin.UserID, true).Times(1).Return(user, nil)
+			},
+			Run: func() {
+				okresp, _, err := uc.VerifyAccount(ctx, input)
+				assert.NoError(t, err.Type)
+				assert.Equal(t, okresp.IsActive, true)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
 func TestUserUsecase_generatePinForOTP(t *testing.T) {
 	viper.Set("env", "definitly-production")
 	for i := 0; i < 1000000; i++ {

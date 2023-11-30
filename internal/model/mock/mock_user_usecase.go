@@ -50,3 +50,19 @@ func (mr *MockUserUsecaseMockRecorder) SignUp(arg0, arg1 interface{}) *gomock.Ca
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SignUp", reflect.TypeOf((*MockUserUsecase)(nil).SignUp), arg0, arg1)
 }
+
+// VerifyAccount mocks base method.
+func (m *MockUserUsecase) VerifyAccount(arg0 context.Context, arg1 *model.AccountVerificationInput) (*model.SuccessAccountVerificationResponse, *model.FailedAccountVerificationResponse, *common.Error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "VerifyAccount", arg0, arg1)
+	ret0, _ := ret[0].(*model.SuccessAccountVerificationResponse)
+	ret1, _ := ret[1].(*model.FailedAccountVerificationResponse)
+	ret2, _ := ret[2].(*common.Error)
+	return ret0, ret1, ret2
+}
+
+// VerifyAccount indicates an expected call of VerifyAccount.
+func (mr *MockUserUsecaseMockRecorder) VerifyAccount(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifyAccount", reflect.TypeOf((*MockUserUsecase)(nil).VerifyAccount), arg0, arg1)
+}
