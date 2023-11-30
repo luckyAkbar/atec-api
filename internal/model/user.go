@@ -29,7 +29,7 @@ type User struct {
 	Role      Role
 	CreatedAt time.Time
 	UpdatedAt time.Time
-	DeletedAt null.Time
+	DeletedAt gorm.DeletedAt
 }
 
 // SignUpInput will be the request format to sign up

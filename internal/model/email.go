@@ -9,6 +9,7 @@ import (
 	"github.com/lib/pq"
 	"github.com/sweet-go/stdlib/mail"
 	"gopkg.in/guregu/null.v4"
+	"gorm.io/gorm"
 )
 
 // Email represent emails table structure from database
@@ -24,7 +25,7 @@ type Email struct {
 	Metadata        null.String
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
-	DeletedAt       null.Time
+	DeletedAt       gorm.DeletedAt
 }
 
 // GenericReceipientsTo convert To to model.GenericReceipient

@@ -11,14 +11,9 @@ import (
 
 // Pin represent "pins" table
 type Pin struct {
-	ID          uuid.UUID
-	Pin         string
-	UserID      uuid.UUID
-	ExpiredAt   time.Time
-	FailedCount int
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	DeletedAt   null.Time
+	UpdatedAt         time.Time
+	DeletedAt         gorm.DeletedAt
+}
 }
 
 // PinRepository pin's repository
