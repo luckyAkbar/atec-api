@@ -133,13 +133,13 @@ func (u *userUc) SignUp(ctx context.Context, input *model.SignUpInput) (*model.S
 	}
 
 	pin := &model.Pin{
-		ID:          uuid.New(),
-		Pin:         otpEnc,
-		UserID:      user.ID,
-		ExpiredAt:   time.Now().Add(time.Minute * time.Duration(config.PinExpiryMinutes())).UTC(),
-		FailedCount: 0,
-		CreatedAt:   now,
-		UpdatedAt:   now,
+		ID:                uuid.New(),
+		Pin:               otpEnc,
+		UserID:            user.ID,
+		ExpiredAt:         time.Now().Add(time.Minute * time.Duration(config.PinExpiryMinutes())).UTC(),
+		RemainingAttempts: config.PinMaxRetry(),
+		CreatedAt:         now,
+		UpdatedAt:         now,
 	}
 
 	if err := u.pinRepo.Create(ctx, pin, tx); err != nil {
