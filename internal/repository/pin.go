@@ -55,3 +55,17 @@ func (r *pinRepo) FindByID(ctx context.Context, id uuid.UUID) (*model.Pin, error
 		return pin, nil
 	}
 }
+
+func (r *pinRepo) DecrementRemainingAttempts(ctx context.Context, id uuid.UUID) error {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func": "pinRepo.DecrementRemainingAttempts",
+		"data": helper.Dump(id),
+	})
+
+	if err := r.db.WithContext(ctx).Model(&model.Pin{}).Where("id = ?", id).Update("remaining_attempts", gorm.Expr("remaining_attempts - 1")).Error; err != nil {
+		logger.WithError(err).Error("failed to decrement remaining attempts")
+		return err
+	}
+
+	return nil
+}

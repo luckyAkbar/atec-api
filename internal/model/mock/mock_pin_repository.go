@@ -51,6 +51,20 @@ func (mr *MockPinRepositoryMockRecorder) Create(arg0, arg1, arg2 interface{}) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockPinRepository)(nil).Create), arg0, arg1, arg2)
 }
 
+// DecrementRemainingAttempts mocks base method.
+func (m *MockPinRepository) DecrementRemainingAttempts(arg0 context.Context, arg1 uuid.UUID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DecrementRemainingAttempts", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DecrementRemainingAttempts indicates an expected call of DecrementRemainingAttempts.
+func (mr *MockPinRepositoryMockRecorder) DecrementRemainingAttempts(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DecrementRemainingAttempts", reflect.TypeOf((*MockPinRepository)(nil).DecrementRemainingAttempts), arg0, arg1)
+}
+
 // FindByID mocks base method.
 func (m *MockPinRepository) FindByID(arg0 context.Context, arg1 uuid.UUID) (*model.Pin, error) {
 	m.ctrl.T.Helper()

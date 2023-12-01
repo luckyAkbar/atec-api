@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
@@ -133,13 +134,13 @@ func (u *userUc) SignUp(ctx context.Context, input *model.SignUpInput) (*model.S
 	}
 
 	pin := &model.Pin{
-		ID:          uuid.New(),
-		Pin:         otpEnc,
-		UserID:      user.ID,
-		ExpiredAt:   time.Now().Add(time.Minute * time.Duration(config.PinExpiryMinutes())).UTC(),
-		FailedCount: 0,
-		CreatedAt:   now,
-		UpdatedAt:   now,
+		ID:                uuid.New(),
+		Pin:               otpEnc,
+		UserID:            user.ID,
+		ExpiredAt:         time.Now().Add(time.Minute * time.Duration(config.PinExpiryMinutes())).UTC(),
+		RemainingAttempts: config.PinMaxRetry(),
+		CreatedAt:         now,
+		UpdatedAt:         now,
 	}
 
 	if err := u.pinRepo.Create(ctx, pin, tx); err != nil {
@@ -176,6 +177,110 @@ func (u *userUc) SignUp(ctx context.Context, input *model.SignUpInput) (*model.S
 		PinExpiredAt:      pin.ExpiredAt,
 		RemainingAttempts: config.PinMaxRetry(),
 	}, nilErr
+}
+
+func (u *userUc) VerifyAccount(ctx context.Context, input *model.AccountVerificationInput) (*model.SuccessAccountVerificationResponse, *model.FailedAccountVerificationResponse, *common.Error) {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func":  "userUc.VerifyAccount",
+		"input": helper.Dump(input),
+	})
+
+	if err := input.Validate(); err != nil {
+		return nil, nil, &common.Error{
+			Message: "invalid values on input for account verification",
+			Cause:   err,
+			Code:    http.StatusBadRequest,
+			Type:    ErrInputAccountVerificationInvalid,
+		}
+	}
+
+	pin, err := u.pinRepo.FindByID(ctx, input.PinValidationID)
+	switch err {
+	default:
+		logger.WithError(err).Error("failed to find pin by id")
+		return nil, nil, &common.Error{
+			Message: "failed to find pin by id",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	case repository.ErrNotFound:
+		return nil, nil, &common.Error{
+			Message: "data not found",
+			Cause:   err,
+			Code:    http.StatusNotFound,
+			Type:    ErrResourceNotFound,
+		}
+	case nil:
+		break
+	}
+
+	if pin.IsExpired() {
+		return nil, nil, &common.Error{
+			Message: "pin is expired",
+			Cause:   nil,
+			Code:    http.StatusBadRequest,
+			Type:    ErrPinExpired,
+		}
+	}
+
+	pinDecoded, err := base64.StdEncoding.DecodeString(pin.Pin)
+	if err != nil {
+		return nil, nil, &common.Error{
+			Message: "failed to decode pin",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	}
+
+	err = u.sharedCryptor.CompareHash(pinDecoded, []byte(input.Pin))
+	switch err {
+	default:
+		logger.WithError(err).Warn("sharedCryptor.Compare returning non nil error")
+		err = u.pinRepo.DecrementRemainingAttempts(ctx, pin.ID)
+		if err != nil {
+			logger.WithError(err).Error("failed to decrement remaining attempts for failed pin validation")
+			return nil, nil, &common.Error{
+				Message: "failed to decrement remaining attempts for failed pin validation",
+				Cause:   err,
+				Code:    http.StatusInternalServerError,
+				Type:    ErrInternal,
+			}
+		}
+
+		return nil, &model.FailedAccountVerificationResponse{
+				RemainingAttempts: pin.RemainingAttempts - 1,
+			}, &common.Error{
+				Message: "invalid pin",
+				Cause:   err,
+				Code:    http.StatusBadRequest,
+				Type:    ErrPinInvalid,
+			}
+	case nil:
+		break
+	}
+
+	user, err := u.userRepo.UpdateActiveStatus(ctx, pin.UserID, true)
+	if err != nil {
+		logger.WithError(err).Error("failed to update user active status")
+		return nil, nil, &common.Error{
+			Message: "failed to update user active status",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	}
+
+	return &model.SuccessAccountVerificationResponse{
+		ID:        user.ID,
+		Email:     user.Email,
+		Username:  user.Username,
+		IsActive:  user.IsActive,
+		Role:      user.Role,
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
+	}, nil, nilErr
 }
 
 func generatePinForOTP() string {

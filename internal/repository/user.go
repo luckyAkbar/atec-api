@@ -3,9 +3,11 @@ package repository
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/luckyAkbar/atec-api/internal/model"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type userRepo struct {
@@ -45,6 +47,27 @@ func (r *userRepo) FindByEmail(ctx context.Context, email string) (*model.User, 
 	switch err {
 	default:
 		logger.WithError(err).Error("failed to find user by email")
+		return nil, err
+	case gorm.ErrRecordNotFound:
+		return nil, ErrNotFound
+	case nil:
+		return user, nil
+	}
+}
+
+func (r *userRepo) UpdateActiveStatus(ctx context.Context, id uuid.UUID, status bool) (*model.User, error) {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func": "userRepo.UpdateActiveStatus",
+	})
+
+	user := &model.User{}
+	err := r.db.WithContext(ctx).
+		Model(user).Clauses(clause.Returning{}).
+		Where("id = ? AND deleted_at IS NULL", id).Update("is_active", status).Error
+
+	switch err {
+	default:
+		logger.WithError(err).Error("failed to update user active status")
 		return nil, err
 	case gorm.ErrRecordNotFound:
 		return nil, ErrNotFound

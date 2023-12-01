@@ -10,6 +10,9 @@ var (
 	// ErrInternal is returned when internal error occurs, such as database error, etc
 	ErrInternal = errors.New("000000")
 
+	// ErrResourceNotFound is returned when resource is not found, such as user not found, etc
+	ErrResourceNotFound = errors.New("000003")
+
 	// ErrEmailInputInvalid is returned when email input is invalid, such as empty subject, 0 receipients, etc
 	ErrEmailInputInvalid = errors.New("email input invalid")
 
@@ -18,6 +21,15 @@ var (
 
 	// ErrEmailAlreadyRegistered will be returned when user tried to sign up using an already registered email
 	ErrEmailAlreadyRegistered = errors.New("001002")
+
+	// ErrInputAccountVerificationInvalid will be returned when input is invalid
+	ErrInputAccountVerificationInvalid = errors.New("001003")
+
+	// ErrPinExpired is returned when the pin is expired by time, or no remaining attempts available
+	ErrPinExpired = errors.New("001004")
+
+	// ErrPinInvalid is returned when pin is invalid
+	ErrPinInvalid = errors.New("001005")
 )
 
 var nilErr = &common.Error{

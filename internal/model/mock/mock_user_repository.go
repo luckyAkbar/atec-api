@@ -9,6 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	uuid "github.com/google/uuid"
 	model "github.com/luckyAkbar/atec-api/internal/model"
 	gorm "gorm.io/gorm"
 )
@@ -63,4 +64,19 @@ func (m *MockUserRepository) FindByEmail(arg0 context.Context, arg1 string) (*mo
 func (mr *MockUserRepositoryMockRecorder) FindByEmail(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByEmail", reflect.TypeOf((*MockUserRepository)(nil).FindByEmail), arg0, arg1)
+}
+
+// UpdateActiveStatus mocks base method.
+func (m *MockUserRepository) UpdateActiveStatus(arg0 context.Context, arg1 uuid.UUID, arg2 bool) (*model.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateActiveStatus", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*model.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateActiveStatus indicates an expected call of UpdateActiveStatus.
+func (mr *MockUserRepositoryMockRecorder) UpdateActiveStatus(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateActiveStatus", reflect.TypeOf((*MockUserRepository)(nil).UpdateActiveStatus), arg0, arg1, arg2)
 }

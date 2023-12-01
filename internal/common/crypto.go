@@ -22,7 +22,7 @@ type SharedCryptor interface {
 	Encrypt(plainText string) (encryptedText string, err error)
 	Decrypt(cipherText string) (plainText string, err error)
 	Hash(data []byte) (string, error)
-	CompareHash(data []byte, hashedPassword string) error
+	CompareHash(hashed []byte, plain []byte) error
 }
 
 // CreateCryptorOpts is the options used to create a new cryptor instance.
@@ -101,8 +101,8 @@ func (s *sharedCryptor) Hash(data []byte) (string, error) {
 	return base64.StdEncoding.EncodeToString(hashed), nil
 }
 
-func (s *sharedCryptor) CompareHash(data []byte, hashedPassword string) error {
-	return bcrypt.CompareHashAndPassword([]byte(hashedPassword), data)
+func (s *sharedCryptor) CompareHash(hashed []byte, plain []byte) error {
+	return bcrypt.CompareHashAndPassword(hashed, plain)
 }
 
 func (s *sharedCryptor) generateIVKey(iv string) (bIv []byte, err error) {

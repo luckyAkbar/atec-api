@@ -34,7 +34,7 @@ func (m *MockSharedCryptor) EXPECT() *MockSharedCryptorMockRecorder {
 }
 
 // CompareHash mocks base method.
-func (m *MockSharedCryptor) CompareHash(arg0 []byte, arg1 string) error {
+func (m *MockSharedCryptor) CompareHash(arg0, arg1 []byte) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CompareHash", arg0, arg1)
 	ret0, _ := ret[0].(error)

@@ -25,4 +25,5 @@ func NewService(rootGroup *echo.Group, apiResponseGenerator stdhttp.APIResponseG
 
 func (s *service) initRoutes() {
 	s.rootGroup.POST("/users/accounts/", s.handleSignUp())
+	s.rootGroup.POST("/users/accounts/validation/", s.handleAccountVerification())
 }
