@@ -5,10 +5,12 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"github.com/sweet-go/stdlib/encryption"
 	"golang.org/x/crypto/bcrypt"
@@ -23,6 +25,7 @@ type SharedCryptor interface {
 	Decrypt(cipherText string) (plainText string, err error)
 	Hash(data []byte) (string, error)
 	CompareHash(hashed []byte, plain []byte) error
+	CreateSecureToken() (string, string, error)
 }
 
 // CreateCryptorOpts is the options used to create a new cryptor instance.
@@ -103,6 +106,21 @@ func (s *sharedCryptor) Hash(data []byte) (string, error) {
 
 func (s *sharedCryptor) CompareHash(hashed []byte, plain []byte) error {
 	return bcrypt.CompareHashAndPassword(hashed, plain)
+}
+
+func (s *sharedCryptor) CreateSecureToken() (string, string, error) {
+	random := []byte(uuid.New().String())
+	raw := uuid.NewHash(sha256.New(), uuid.New(), random, 5)
+
+	plain, err := s.Hash([]byte(raw.String()))
+	if err != nil {
+		return "", "", err
+	}
+
+	enc := encryption.SHA256Hash([]byte(plain))
+	encoded := base64.StdEncoding.EncodeToString(enc)
+
+	return plain, encoded, nil
 }
 
 func (s *sharedCryptor) generateIVKey(iv string) (bIv []byte, err error) {

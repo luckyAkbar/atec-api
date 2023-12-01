@@ -105,8 +105,7 @@ func (u *authUc) LogIn(ctx context.Context, input *model.LogInInput) (*model.Log
 		}
 	}
 
-	rawToken := uuid.New().String()
-	hashedToken, err := u.sharedCryptor.Hash([]byte(rawToken))
+	plain, crypted, err := u.sharedCryptor.CreateSecureToken()
 	if err != nil {
 		return nil, &common.Error{
 			Message: "failed to create access token",
@@ -119,7 +118,7 @@ func (u *authUc) LogIn(ctx context.Context, input *model.LogInInput) (*model.Log
 	now := time.Now().UTC()
 	at := &model.AccessToken{
 		ID:         uuid.New(),
-		Token:      hashedToken,
+		Token:      crypted,
 		UserID:     user.ID,
 		ValidUntil: time.Now().Add(config.AccessTokenActiveDuration()).UTC(),
 		CreatedAt:  now,
@@ -135,5 +134,5 @@ func (u *authUc) LogIn(ctx context.Context, input *model.LogInInput) (*model.Log
 		}
 	}
 
-	return at.ToLogInOutput(rawToken), nilErr
+	return at.ToLogInOutput(plain), nilErr
 }

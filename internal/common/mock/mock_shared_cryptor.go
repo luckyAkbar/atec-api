@@ -47,6 +47,22 @@ func (mr *MockSharedCryptorMockRecorder) CompareHash(arg0, arg1 interface{}) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CompareHash", reflect.TypeOf((*MockSharedCryptor)(nil).CompareHash), arg0, arg1)
 }
 
+// CreateSecureToken mocks base method.
+func (m *MockSharedCryptor) CreateSecureToken() (string, string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateSecureToken")
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(string)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// CreateSecureToken indicates an expected call of CreateSecureToken.
+func (mr *MockSharedCryptorMockRecorder) CreateSecureToken() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSecureToken", reflect.TypeOf((*MockSharedCryptor)(nil).CreateSecureToken))
+}
+
 // Decrypt mocks base method.
 func (m *MockSharedCryptor) Decrypt(arg0 string) (string, error) {
 	m.ctrl.T.Helper()

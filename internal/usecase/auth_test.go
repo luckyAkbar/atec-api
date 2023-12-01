@@ -169,12 +169,12 @@ func TestAuthUsecase_LogIn(t *testing.T) {
 			},
 		},
 		{
-			Name: "failed to hash access token",
+			Name: "failed to generate access token",
 			MockFn: func() {
 				mockSharedCryptor.EXPECT().Encrypt(input.Email).Times(1).Return(encEmail, nil)
 				mockUserRepo.EXPECT().FindByEmail(ctx, encEmail).Times(1).Return(user, nil)
 				mockSharedCryptor.EXPECT().CompareHash(pwDecoded, []byte(input.Password)).Times(1).Return(nil)
-				mockSharedCryptor.EXPECT().Hash(gomock.Any()).Times(1).Return("", errors.New("err"))
+				mockSharedCryptor.EXPECT().CreateSecureToken().Times(1).Return("", "", errors.New("err access token"))
 			},
 			Run: func() {
 				_, cerr := uc.LogIn(ctx, input)
@@ -190,7 +190,7 @@ func TestAuthUsecase_LogIn(t *testing.T) {
 				mockSharedCryptor.EXPECT().Encrypt(input.Email).Times(1).Return(encEmail, nil)
 				mockUserRepo.EXPECT().FindByEmail(ctx, encEmail).Times(1).Return(user, nil)
 				mockSharedCryptor.EXPECT().CompareHash(pwDecoded, []byte(input.Password)).Times(1).Return(nil)
-				mockSharedCryptor.EXPECT().Hash(gomock.Any()).Times(1).Times(1).Return("anythinglaaa", nil)
+				mockSharedCryptor.EXPECT().CreateSecureToken().Times(1).Return("plain", "crypted", nil)
 				mockAccessTokenRepo.EXPECT().Create(ctx, gomock.Any()).Times(1).Return(errors.New("err"))
 			},
 			Run: func() {
@@ -207,7 +207,7 @@ func TestAuthUsecase_LogIn(t *testing.T) {
 				mockSharedCryptor.EXPECT().Encrypt(input.Email).Times(1).Return(encEmail, nil)
 				mockUserRepo.EXPECT().FindByEmail(ctx, encEmail).Times(1).Return(user, nil)
 				mockSharedCryptor.EXPECT().CompareHash(pwDecoded, []byte(input.Password)).Times(1).Return(nil)
-				mockSharedCryptor.EXPECT().Hash(gomock.Any()).Times(1).Times(1).Return("anythinglaaa", nil)
+				mockSharedCryptor.EXPECT().CreateSecureToken().Times(1).Return("plain", "crypted", nil)
 				mockAccessTokenRepo.EXPECT().Create(ctx, gomock.Any()).Times(1).Return(nil)
 			},
 			Run: func() {
