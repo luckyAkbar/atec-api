@@ -61,6 +61,7 @@ func serverFn(_ *cobra.Command, _ []string) {
 	userRepo := repository.NewUserRepository(db.PostgresDB)
 	pinRepo := repository.NewPinRepository(db.PostgresDB)
 	emailRepo := repository.NewEmailRepository(db.PostgresDB)
+	accessTokenRepo := repository.NewAccessTokenRepository(db.PostgresDB)
 
 	workerPkgClient, err := workerPkg.NewClient(config.WorkerBrokerHost())
 	if err != nil {
@@ -71,6 +72,7 @@ func serverFn(_ *cobra.Command, _ []string) {
 
 	emailUsecase := usecase.NewEmailUsecase(emailRepo, workerClient)
 	userUsecase := usecase.NewUserUsecase(userRepo, pinRepo, sharedCryptor, emailUsecase, db.PostgresDB)
+	authUsecase := usecase.NewAuthUsecase(accessTokenRepo, userRepo, sharedCryptor)
 
 	httpServer := echo.New()
 
@@ -81,7 +83,7 @@ func serverFn(_ *cobra.Command, _ []string) {
 
 	rootGroup := httpServer.Group("")
 
-	rest.NewService(rootGroup, apirespGen, userUsecase)
+	rest.NewService(rootGroup, apirespGen, userUsecase, authUsecase)
 
 	sigCh := make(chan os.Signal, 1)
 	errCh := make(chan error, 1)

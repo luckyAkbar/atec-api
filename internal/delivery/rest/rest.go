@@ -10,14 +10,16 @@ type service struct {
 	rootGroup            *echo.Group
 	apiResponseGenerator stdhttp.APIResponseGenerator
 	userUsecase          model.UserUsecase
+	authUsecase          model.AuthUsecase
 }
 
 // NewService will create http service and register all of it's routes
-func NewService(rootGroup *echo.Group, apiResponseGenerator stdhttp.APIResponseGenerator, userUsecase model.UserUsecase) {
+func NewService(rootGroup *echo.Group, apiResponseGenerator stdhttp.APIResponseGenerator, userUsecase model.UserUsecase, authUsecase model.AuthUsecase) {
 	s := &service{
 		rootGroup:            rootGroup,
 		apiResponseGenerator: apiResponseGenerator,
 		userUsecase:          userUsecase,
+		authUsecase:          authUsecase,
 	}
 
 	s.initRoutes()
@@ -26,4 +28,6 @@ func NewService(rootGroup *echo.Group, apiResponseGenerator stdhttp.APIResponseG
 func (s *service) initRoutes() {
 	s.rootGroup.POST("/users/accounts/", s.handleSignUp())
 	s.rootGroup.POST("/users/accounts/validation/", s.handleAccountVerification())
+
+	s.rootGroup.POST("/auth/sessions/", s.handleLogIn())
 }

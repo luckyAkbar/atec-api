@@ -153,3 +153,13 @@ func PinMaxRetry() int {
 
 	return tries
 }
+
+// AccessTokenActiveDuration returns access token active duration. Default to 1 hour
+func AccessTokenActiveDuration() time.Duration {
+	minutes := viper.GetInt("server.auth.access_token_duration_minutes")
+	if minutes <= 0 {
+		return time.Minute * 60
+	}
+
+	return time.Minute * time.Duration(minutes)
+}
