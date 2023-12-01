@@ -32,6 +32,11 @@ type User struct {
 	DeletedAt gorm.DeletedAt
 }
 
+// IsBlocked decide if the user is blocked or not by DeletedAt and IsActive attributes
+func (u *User) IsBlocked() bool {
+	return u.DeletedAt.Valid || !u.IsActive
+}
+
 // SignUpInput will be the request format to sign up
 type SignUpInput struct {
 	Username            string `json:"username" validate:"required"`
