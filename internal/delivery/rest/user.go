@@ -16,7 +16,7 @@ func (s *service) handleSignUp() echo.HandlerFunc {
 			Request   *model.SignUpInput `json:"request"`
 			Signature string             `json:"signature"`
 		}{}
-		if err := c.Bind(&input); err != nil {
+		if c.Bind(&input) != nil || input.Request == nil {
 			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil)
 		}
 
@@ -44,7 +44,7 @@ func (s *service) handleAccountVerification() echo.HandlerFunc {
 			Request   *model.AccountVerificationInput `json:"request"`
 			Signature string                          `json:"signature"`
 		}{}
-		if err := c.Bind(&input); err != nil {
+		if c.Bind(&input) != nil || input.Request == nil {
 			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil)
 		}
 
