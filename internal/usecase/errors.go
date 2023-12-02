@@ -30,6 +30,15 @@ var (
 
 	// ErrPinInvalid is returned when pin is invalid
 	ErrPinInvalid = errors.New("001005")
+
+	// ErrUserIsBlocked is returned when user is blocked to access this service
+	ErrUserIsBlocked = errors.New("002001")
+
+	// ErrInvalidPassword is returned when password is invalid
+	ErrInvalidPassword = errors.New("002002")
+
+	// ErrInvalidLoginInput is returned when login input is invalid, such as empty email, empty password, etc.
+	ErrInvalidLoginInput = errors.New("002003")
 )
 
 var nilErr = &common.Error{

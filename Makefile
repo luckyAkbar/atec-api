@@ -79,6 +79,13 @@ internal/model/mock/mock_user_repository.go:
 internal/common/mock/mock_shared_cryptor.go:
 	mockgen -destination=internal/common/mock/mock_shared_cryptor.go -package=mock github.com/luckyAkbar/atec-api/internal/common SharedCryptor
 
+internal/common/mock/mock_access_token_repository.go:
+	mockgen -destination=internal/model/mock/mock_access_token_repository.go -package=mock github.com/luckyAkbar/atec-api/internal/model AccessTokenRepository
+
+internal/common/mock/mock_auth_usecase.go:
+	mockgen -destination=internal/model/mock/mock_auth_usecase.go -package=mock github.com/luckyAkbar/atec-api/internal/model AuthUsecase
+
+
 mockgen: clean \
 	internal/model/mock/mock_email_usecase.go \
 	internal/model/mock/mock_email_repository.go \
@@ -86,7 +93,9 @@ mockgen: clean \
 	internal/model/mock/mock_pin_repository.go \
 	internal/model/mock/mock_user_usecase.go \
 	internal/model/mock/mock_user_repository.go \
-	internal/common/mock/mock_shared_cryptor.go
+	internal/common/mock/mock_shared_cryptor.go \
+	internal/common/mock/mock_access_token_repository.go \
+	internal/common/mock/mock_auth_usecase.go
 
 clean:
 	find -type f -name 'mock_*.go' -delete
