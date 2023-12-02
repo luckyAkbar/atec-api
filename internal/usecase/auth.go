@@ -136,3 +136,53 @@ func (u *authUc) LogIn(ctx context.Context, input *model.LogInInput) (*model.Log
 
 	return at.ToLogInOutput(plain), nilErr
 }
+
+func (u *authUc) LogOut(ctx context.Context, input *model.LogOutInput) *common.Error {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func":  "authUc.LogOut",
+		"input": helper.Dump(input),
+	})
+
+	if err := input.Validate(); err != nil {
+		return &common.Error{
+			Message: "invalid logout input",
+			Cause:   err,
+			Code:    http.StatusBadRequest,
+			Type:    ErrInvalidLogoutInput,
+		}
+	}
+
+	encoded := u.sharedCryptor.ReverseSecureToken(input.AccessToken)
+	session, err := u.accessTokenRepo.FindByToken(ctx, encoded)
+	switch err {
+	default:
+		logger.WithError(err).Error("failed to find session from db")
+		return &common.Error{
+			Message: "failed to find session from db",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	case repository.ErrNotFound:
+		return &common.Error{
+			Message: "not found",
+			Cause:   repository.ErrNotFound,
+			Code:    http.StatusNotFound,
+			Type:    ErrResourceNotFound,
+		}
+	case nil:
+		break
+	}
+
+	if err := u.accessTokenRepo.DeleteByID(ctx, session.ID); err != nil {
+		logger.WithError(err).Error("failed to delete session from db")
+		return &common.Error{
+			Message: "failed to delete session from db",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	}
+
+	return nilErr
+}

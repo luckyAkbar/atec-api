@@ -55,12 +55,25 @@ type LogInOutput struct {
 	DeletedAt  gorm.DeletedAt `json:"deletedAt,omitempty"`
 }
 
+// LogOutInput input for log out process
+type LogOutInput struct {
+	AccessToken string `json:"accessToken" validate:"required"`
+}
+
+// Validate validate struct
+func (loi *LogOutInput) Validate() error {
+	return validator.Struct(loi)
+}
+
 // AccessTokenRepository access token repository
 type AccessTokenRepository interface {
 	Create(ctx context.Context, at *AccessToken) error
+	FindByToken(ctx context.Context, token string) (*AccessToken, error)
+	DeleteByID(ctx context.Context, id uuid.UUID) error
 }
 
 // AuthUsecase auth usecase
 type AuthUsecase interface {
 	LogIn(ctx context.Context, input *LogInInput) (*LogInOutput, *common.Error)
+	LogOut(ctx context.Context, input *LogOutInput) *common.Error
 }

@@ -39,6 +39,9 @@ var (
 
 	// ErrInvalidLoginInput is returned when login input is invalid, such as empty email, empty password, etc.
 	ErrInvalidLoginInput = errors.New("002003")
+
+	// ErrInvalidLogoutInput is returned when login input is invalid, such as empty email, empty password, etc.
+	ErrInvalidLogoutInput = errors.New("002004")
 )
 
 var nilErr = &common.Error{
