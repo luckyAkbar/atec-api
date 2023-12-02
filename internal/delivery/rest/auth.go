@@ -37,3 +37,26 @@ func (s *service) handleLogIn() echo.HandlerFunc {
 		}
 	}
 }
+
+func (s *service) handleLogOut() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		var input = struct {
+			Request   *model.LogOutInput `json:"request"`
+			Signature string             `json:"signature"`
+		}{}
+		if c.Bind(&input) != nil || input.Request == nil {
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil)
+		}
+
+		custerr := s.authUsecase.LogOut(c.Request().Context(), input.Request)
+		switch custerr.Type {
+		default:
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, custerr.GenerateStdlibHTTPResponse(nil), nil)
+		case usecase.ErrInternal:
+			logrus.WithContext(c.Request().Context()).WithError(custerr.Cause).Error("failed to handle log out request")
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrInternal.GenerateStdlibHTTPResponse(nil), nil)
+		case nil:
+			return c.NoContent(http.StatusNoContent)
+		}
+	}
+}

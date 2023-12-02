@@ -107,3 +107,17 @@ func (mr *MockSharedCryptorMockRecorder) Hash(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Hash", reflect.TypeOf((*MockSharedCryptor)(nil).Hash), arg0)
 }
+
+// ReverseSecureToken mocks base method.
+func (m *MockSharedCryptor) ReverseSecureToken(arg0 string) string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReverseSecureToken", arg0)
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// ReverseSecureToken indicates an expected call of ReverseSecureToken.
+func (mr *MockSharedCryptorMockRecorder) ReverseSecureToken(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReverseSecureToken", reflect.TypeOf((*MockSharedCryptor)(nil).ReverseSecureToken), arg0)
+}

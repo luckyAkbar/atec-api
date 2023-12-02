@@ -9,6 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	uuid "github.com/google/uuid"
 	model "github.com/luckyAkbar/atec-api/internal/model"
 )
 
@@ -47,4 +48,33 @@ func (m *MockAccessTokenRepository) Create(arg0 context.Context, arg1 *model.Acc
 func (mr *MockAccessTokenRepositoryMockRecorder) Create(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockAccessTokenRepository)(nil).Create), arg0, arg1)
+}
+
+// DeleteByID mocks base method.
+func (m *MockAccessTokenRepository) DeleteByID(arg0 context.Context, arg1 uuid.UUID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteByID", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteByID indicates an expected call of DeleteByID.
+func (mr *MockAccessTokenRepositoryMockRecorder) DeleteByID(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteByID", reflect.TypeOf((*MockAccessTokenRepository)(nil).DeleteByID), arg0, arg1)
+}
+
+// FindByToken mocks base method.
+func (m *MockAccessTokenRepository) FindByToken(arg0 context.Context, arg1 string) (*model.AccessToken, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindByToken", arg0, arg1)
+	ret0, _ := ret[0].(*model.AccessToken)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindByToken indicates an expected call of FindByToken.
+func (mr *MockAccessTokenRepositoryMockRecorder) FindByToken(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByToken", reflect.TypeOf((*MockAccessTokenRepository)(nil).FindByToken), arg0, arg1)
 }

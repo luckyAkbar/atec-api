@@ -30,4 +30,5 @@ func (s *service) initRoutes() {
 	s.rootGroup.POST("/users/accounts/validation/", s.handleAccountVerification())
 
 	s.rootGroup.POST("/auth/sessions/", s.handleLogIn())
+	s.rootGroup.DELETE("/auth/sessions/", s.handleLogOut())
 }

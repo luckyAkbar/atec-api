@@ -190,3 +190,175 @@ func TestRest_handleLogIn(t *testing.T) {
 		})
 	}
 }
+
+func TestRest_handleLogOut(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockAPIRespGen := httpMock.NewMockAPIResponseGenerator(ctrl)
+	mockAuthUc := mock.NewMockAuthUsecase(ctrl)
+	input := &model.LogOutInput{
+		AccessToken: "accessToken",
+	}
+
+	tests := []common.TestStructure{
+		{
+			Name:   "err bad input",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					authUsecase:          mockAuthUc,
+				}
+				req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`
+					{
+						"request": {
+							"accessToken": "accessToken", <- invalid here
+						},
+						"signature": "ok"
+					}
+				`))
+				req.Header.Set("Content-Type", "application/json")
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil)
+				err := restService.handleLogOut()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name:   "err bad input",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					authUsecase:          mockAuthUc,
+				}
+				req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`
+					{
+						"signature": "ok"
+					}
+				`))
+				req.Header.Set("Content-Type", "application/json")
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil)
+				err := restService.handleLogOut()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name:   "usecase return err internal",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					authUsecase:          mockAuthUc,
+				}
+				req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`
+					{
+						"request": {
+							"accessToken": "accessToken"
+						},
+						"signature": "ok"
+					}
+				`))
+				req.Header.Set("Content-Type", "application/json")
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+
+				mockAuthUc.EXPECT().LogOut(ectx.Request().Context(), input).Times(1).Return(&common.Error{
+					Type: usecase.ErrInternal,
+				})
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, ErrInternal.GenerateStdlibHTTPResponse(nil), nil)
+				err := restService.handleLogOut()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name:   "usecase return others specific err",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					authUsecase:          mockAuthUc,
+				}
+				req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`
+					{
+						"request": {
+							"accessToken": "accessToken"
+						},
+						"signature": "ok"
+					}
+				`))
+				req.Header.Set("Content-Type", "application/json")
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+
+				cerr := &common.Error{
+					Type: usecase.ErrInvalidLogoutInput,
+				}
+
+				mockAuthUc.EXPECT().LogOut(ectx.Request().Context(), input).Times(1).Return(cerr)
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, cerr.GenerateStdlibHTTPResponse(nil), nil)
+				err := restService.handleLogOut()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name:   "ok",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					authUsecase:          mockAuthUc,
+				}
+				req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`
+					{
+						"request": {
+							"accessToken": "accessToken"
+						},
+						"signature": "ok"
+					}
+				`))
+				req.Header.Set("Content-Type", "application/json")
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+
+				mockAuthUc.EXPECT().LogOut(ectx.Request().Context(), input).Times(1).Return(&common.Error{
+					Type: nil,
+				})
+				err := restService.handleLogOut()(ectx)
+				assert.NoError(t, err)
+				assert.Equal(t, rec.Result().StatusCode, http.StatusNoContent)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
