@@ -1,0 +1,18 @@
+version: "3"
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: "./main server"
+    ports:
+      - "${SERVER_PORT}:${SERVER_PORT}"
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: "./main worker"
+    depends_on:
+      - server
