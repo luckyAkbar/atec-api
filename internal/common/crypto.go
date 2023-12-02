@@ -26,6 +26,7 @@ type SharedCryptor interface {
 	Hash(data []byte) (string, error)
 	CompareHash(hashed []byte, plain []byte) error
 	CreateSecureToken() (string, string, error)
+	ReverseSecureToken(plain string) string
 }
 
 // CreateCryptorOpts is the options used to create a new cryptor instance.
@@ -121,6 +122,13 @@ func (s *sharedCryptor) CreateSecureToken() (string, string, error) {
 	encoded := base64.StdEncoding.EncodeToString(enc)
 
 	return plain, encoded, nil
+}
+
+func (s *sharedCryptor) ReverseSecureToken(plain string) string {
+	tokenEnc := encryption.SHA256Hash([]byte(plain))
+	encoded := base64.StdEncoding.EncodeToString(tokenEnc)
+
+	return encoded
 }
 
 func (s *sharedCryptor) generateIVKey(iv string) (bIv []byte, err error) {
