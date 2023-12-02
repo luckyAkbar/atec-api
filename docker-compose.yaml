@@ -8,6 +8,7 @@ services:
     command: "./main server"
     ports:
       - "${SERVER_PORT}:${SERVER_PORT}"
+    restart: always
 
   worker:
     build:
@@ -16,3 +17,4 @@ services:
     command: "./main worker"
     depends_on:
       - server
+    restart: always
