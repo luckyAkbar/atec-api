@@ -92,10 +92,7 @@ func (r *accessTokenRepo) FindCredentialByToken(ctx context.Context, token strin
 			"users"."password",
 			"users"."username",
 			"users"."is_active",
-			"users"."role",
-			"users"."created_at",
-			"users"."updated_at",
-			"users"."deleted_at"
+			"users"."role"
 		`).Joins(`FULL JOIN "users" ON "access_tokens"."user_id" = "users"."id"`).
 		Where(`"access_tokens"."token" = ?`, token).Scan(&result).Error
 	switch err {
