@@ -37,6 +37,11 @@ func (u *User) IsBlocked() bool {
 	return u.DeletedAt.Valid || !u.IsActive
 }
 
+// IsAdmin return true if Role is RoleAdmin, false otherwise
+func (u *User) IsAdmin() bool {
+	return u.Role == RoleAdmin
+}
+
 // SignUpInput will be the request format to sign up
 type SignUpInput struct {
 	Username            string `json:"username" validate:"required"`

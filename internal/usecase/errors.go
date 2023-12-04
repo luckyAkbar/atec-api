@@ -42,6 +42,12 @@ var (
 
 	// ErrInvalidLogoutInput is returned when login input is invalid, such as empty email, empty password, etc.
 	ErrInvalidLogoutInput = errors.New("002004")
+
+	// ErrAccessTokenExpired is returned when access token is expired
+	ErrAccessTokenExpired = errors.New("002005")
+
+	// ErrForbiddenAdminOnly is returned when user is not admin, but trying to access admin only resource
+	ErrForbiddenAdminOnly = errors.New("002006")
 )
 
 var nilErr = &common.Error{
