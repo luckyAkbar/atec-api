@@ -186,3 +186,47 @@ func (u *authUc) LogOut(ctx context.Context, input *model.LogOutInput) *common.E
 
 	return nilErr
 }
+
+func (u *authUc) ValidateAccess(ctx context.Context, token string) (*model.AuthUser, *common.Error) {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func":  "authUc.ValidateAccess",
+		"token": token,
+	})
+
+	encToken := u.sharedCryptor.ReverseSecureToken(token)
+	at, user, err := u.accessTokenRepo.FindCredentialByToken(ctx, encToken)
+	switch err {
+	default:
+		logger.WithError(err).Error("failed to find credentials by token to validate access")
+		return nil, &common.Error{
+			Message: "failed to find credentials by token to validate access",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	case repository.ErrNotFound:
+		return nil, &common.Error{
+			Message: "not found",
+			Cause:   repository.ErrNotFound,
+			Code:    http.StatusNotFound,
+			Type:    ErrResourceNotFound,
+		}
+	case nil:
+		break
+	}
+
+	if at.IsExpired() {
+		return nil, &common.Error{
+			Message: "access token is expired",
+			Cause:   errors.New("access token is expired"),
+			Code:    http.StatusForbidden,
+			Type:    ErrAccessTokenExpired,
+		}
+	}
+
+	return &model.AuthUser{
+		UserID:      user.ID,
+		AccessToken: at.Token,
+		Role:        user.Role,
+	}, nilErr
+}

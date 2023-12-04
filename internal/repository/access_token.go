@@ -65,3 +65,44 @@ func (r *accessTokenRepo) DeleteByID(ctx context.Context, id uuid.UUID) error {
 
 	return nil
 }
+
+func (r *accessTokenRepo) FindCredentialByToken(ctx context.Context, token string) (*model.AccessToken, *model.User, error) {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func": "accessTokenRepo.FindCredentialByToken",
+		"data": token,
+	})
+
+	type res struct {
+		model.AccessToken
+		model.User
+	}
+
+	var result res
+	err := r.db.WithContext(ctx).Model(&model.AccessToken{}).
+		Select(`
+			"access_tokens"."id",
+			"access_tokens"."token",
+			"access_tokens"."user_id",
+			"access_tokens"."valid_until",
+			"access_tokens"."created_at",
+			"access_tokens"."updated_at",
+			"access_tokens"."deleted_at",
+			"users"."id",
+			"users"."email",
+			"users"."password",
+			"users"."username",
+			"users"."is_active",
+			"users"."role"
+		`).Joins(`FULL JOIN "users" ON "access_tokens"."user_id" = "users"."id"`).
+		Where(`"access_tokens"."token" = ?`, token).Scan(&result).Error
+	switch err {
+	default:
+		logger.WithError(err).Error("failed to read access token data and user data from db")
+		return nil, nil, err
+	case gorm.ErrRecordNotFound:
+		return nil, nil, ErrNotFound
+	case nil:
+		return &result.AccessToken, &result.User, nil
+	}
+
+}

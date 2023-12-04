@@ -321,3 +321,102 @@ func TestAuthUsecase_LogOut(t *testing.T) {
 		})
 	}
 }
+
+func TestAuthUsecase_ValidateAccess(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	ctx := context.Background()
+	mockAccessTokenRepo := mock.NewMockAccessTokenRepository(ctrl)
+	mockUserRepo := mock.NewMockUserRepository(ctrl)
+	mockSharedCryptor := commonMock.NewMockSharedCryptor(ctrl)
+
+	uc := NewAuthUsecase(mockAccessTokenRepo, mockUserRepo, mockSharedCryptor)
+	token := "token"
+	revToken := "rev token"
+	user := &model.User{
+		ID:   uuid.New(),
+		Role: model.RoleUser,
+	}
+	at := &model.AccessToken{
+		ID:         uuid.New(),
+		Token:      revToken,
+		ValidUntil: time.Now().Add(time.Hour * 7),
+	}
+
+	tests := []common.TestStructure{
+		{
+			Name: "failed to find token from db",
+			MockFn: func() {
+				mockSharedCryptor.EXPECT().ReverseSecureToken(token).Times(1).Return(revToken)
+				mockAccessTokenRepo.EXPECT().FindCredentialByToken(ctx, revToken).Times(1).Return(nil, nil, errors.New("err"))
+			},
+			Run: func() {
+				_, cerr := uc.ValidateAccess(ctx, token)
+				assert.Error(t, cerr)
+				assert.Equal(t, cerr.Type, ErrInternal)
+			},
+		},
+		{
+			Name: "creds not found",
+			MockFn: func() {
+				mockSharedCryptor.EXPECT().ReverseSecureToken(token).Times(1).Return(revToken)
+				mockAccessTokenRepo.EXPECT().FindCredentialByToken(ctx, revToken).Times(1).Return(nil, nil, repository.ErrNotFound)
+			},
+			Run: func() {
+				_, cerr := uc.ValidateAccess(ctx, token)
+				assert.Error(t, cerr)
+				assert.Equal(t, cerr.Type, ErrResourceNotFound)
+			},
+		},
+		{
+			Name: "token expired by valid until",
+			MockFn: func() {
+				mockSharedCryptor.EXPECT().ReverseSecureToken(token).Times(1).Return(revToken)
+				mockAccessTokenRepo.EXPECT().FindCredentialByToken(ctx, revToken).Times(1).Return(&model.AccessToken{
+					ValidUntil: time.Now().Add(time.Hour * -24).UTC(),
+				}, user, nil)
+			},
+			Run: func() {
+				_, cerr := uc.ValidateAccess(ctx, token)
+				assert.Error(t, cerr)
+				assert.Equal(t, cerr.Type, ErrAccessTokenExpired)
+			},
+		},
+		{
+			Name: "token expired by deleted at",
+			MockFn: func() {
+				mockSharedCryptor.EXPECT().ReverseSecureToken(token).Times(1).Return(revToken)
+				mockAccessTokenRepo.EXPECT().FindCredentialByToken(ctx, revToken).Times(1).Return(&model.AccessToken{
+					ValidUntil: time.Now().Add(time.Hour * 24).UTC(),
+					DeletedAt: gorm.DeletedAt{
+						Time:  time.Now().UTC(),
+						Valid: true,
+					},
+				}, user, nil)
+			},
+			Run: func() {
+				_, cerr := uc.ValidateAccess(ctx, token)
+				assert.Error(t, cerr)
+				assert.Equal(t, cerr.Type, ErrAccessTokenExpired)
+			},
+		},
+		{
+			Name: "ok",
+			MockFn: func() {
+				mockSharedCryptor.EXPECT().ReverseSecureToken(token).Times(1).Return(revToken)
+				mockAccessTokenRepo.EXPECT().FindCredentialByToken(ctx, revToken).Times(1).Return(at, user, nil)
+			},
+			Run: func() {
+				res, cerr := uc.ValidateAccess(ctx, token)
+				assert.Equal(t, cerr.Type, nil)
+				assert.Equal(t, res.Role, model.RoleUser)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
