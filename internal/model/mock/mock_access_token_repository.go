@@ -78,3 +78,19 @@ func (mr *MockAccessTokenRepositoryMockRecorder) FindByToken(arg0, arg1 interfac
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByToken", reflect.TypeOf((*MockAccessTokenRepository)(nil).FindByToken), arg0, arg1)
 }
+
+// FindCredentialByToken mocks base method.
+func (m *MockAccessTokenRepository) FindCredentialByToken(arg0 context.Context, arg1 string) (*model.AccessToken, *model.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindCredentialByToken", arg0, arg1)
+	ret0, _ := ret[0].(*model.AccessToken)
+	ret1, _ := ret[1].(*model.User)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// FindCredentialByToken indicates an expected call of FindCredentialByToken.
+func (mr *MockAccessTokenRepositoryMockRecorder) FindCredentialByToken(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindCredentialByToken", reflect.TypeOf((*MockAccessTokenRepository)(nil).FindCredentialByToken), arg0, arg1)
+}
