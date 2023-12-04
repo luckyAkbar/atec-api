@@ -18,6 +18,13 @@ var (
 		Type:    echo.ErrBadRequest,
 	}
 
+	ErrUnauthorized = &common.Error{
+		Message: "unauthorized",
+		Cause:   errors.New("unauthorized"),
+		Code:    http.StatusUnauthorized,
+		Type:    echo.ErrUnauthorized,
+	}
+
 	ErrInternal = &common.Error{
 		Message: "internal server error",
 		Cause:   errors.New("internal server error"),
