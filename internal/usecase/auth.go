@@ -137,22 +137,13 @@ func (u *authUc) LogIn(ctx context.Context, input *model.LogInInput) (*model.Log
 	return at.ToLogInOutput(plain), nilErr
 }
 
-func (u *authUc) LogOut(ctx context.Context, input *model.LogOutInput) *common.Error {
+func (u *authUc) LogOut(ctx context.Context) *common.Error {
 	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
-		"func":  "authUc.LogOut",
-		"input": helper.Dump(input),
+		"func": "authUc.LogOut",
 	})
 
-	if err := input.Validate(); err != nil {
-		return &common.Error{
-			Message: "invalid logout input",
-			Cause:   err,
-			Code:    http.StatusBadRequest,
-			Type:    ErrInvalidLogoutInput,
-		}
-	}
-
-	encoded := u.sharedCryptor.ReverseSecureToken(input.AccessToken)
+	user := model.GetUserFromCtx(ctx)
+	encoded := u.sharedCryptor.ReverseSecureToken(user.AccessToken)
 	session, err := u.accessTokenRepo.FindByToken(ctx, encoded)
 	switch err {
 	default:

@@ -195,9 +195,6 @@ func TestRest_handleLogOut(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockAPIRespGen := httpMock.NewMockAPIResponseGenerator(ctrl)
 	mockAuthUc := mock.NewMockAuthUsecase(ctrl)
-	input := &model.LogOutInput{
-		AccessToken: "accessToken",
-	}
 
 	tests := []common.TestStructure{
 		{
@@ -279,7 +276,7 @@ func TestRest_handleLogOut(t *testing.T) {
 				rec := httptest.NewRecorder()
 				ectx := e.NewContext(req, rec)
 
-				mockAuthUc.EXPECT().LogOut(ectx.Request().Context(), input).Times(1).Return(&common.Error{
+				mockAuthUc.EXPECT().LogOut(ectx.Request().Context()).Times(1).Return(&common.Error{
 					Type: usecase.ErrInternal,
 				})
 				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, ErrInternal.GenerateStdlibHTTPResponse(nil), nil)
@@ -315,7 +312,7 @@ func TestRest_handleLogOut(t *testing.T) {
 					Type: usecase.ErrInvalidLogoutInput,
 				}
 
-				mockAuthUc.EXPECT().LogOut(ectx.Request().Context(), input).Times(1).Return(cerr)
+				mockAuthUc.EXPECT().LogOut(ectx.Request().Context()).Times(1).Return(cerr)
 				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, cerr.GenerateStdlibHTTPResponse(nil), nil)
 				err := restService.handleLogOut()(ectx)
 				assert.NoError(t, err)
@@ -345,7 +342,7 @@ func TestRest_handleLogOut(t *testing.T) {
 				rec := httptest.NewRecorder()
 				ectx := e.NewContext(req, rec)
 
-				mockAuthUc.EXPECT().LogOut(ectx.Request().Context(), input).Times(1).Return(&common.Error{
+				mockAuthUc.EXPECT().LogOut(ectx.Request().Context()).Times(1).Return(&common.Error{
 					Type: nil,
 				})
 				err := restService.handleLogOut()(ectx)

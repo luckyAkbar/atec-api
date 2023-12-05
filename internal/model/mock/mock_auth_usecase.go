@@ -52,17 +52,17 @@ func (mr *MockAuthUsecaseMockRecorder) LogIn(arg0, arg1 interface{}) *gomock.Cal
 }
 
 // LogOut mocks base method.
-func (m *MockAuthUsecase) LogOut(arg0 context.Context, arg1 *model.LogOutInput) *common.Error {
+func (m *MockAuthUsecase) LogOut(arg0 context.Context) *common.Error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "LogOut", arg0, arg1)
+	ret := m.ctrl.Call(m, "LogOut", arg0)
 	ret0, _ := ret[0].(*common.Error)
 	return ret0
 }
 
 // LogOut indicates an expected call of LogOut.
-func (mr *MockAuthUsecaseMockRecorder) LogOut(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockAuthUsecaseMockRecorder) LogOut(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LogOut", reflect.TypeOf((*MockAuthUsecase)(nil).LogOut), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LogOut", reflect.TypeOf((*MockAuthUsecase)(nil).LogOut), arg0)
 }
 
 // ValidateAccess mocks base method.

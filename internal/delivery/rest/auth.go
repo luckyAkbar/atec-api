@@ -48,7 +48,7 @@ func (s *service) handleLogOut() echo.HandlerFunc {
 			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil)
 		}
 
-		custerr := s.authUsecase.LogOut(c.Request().Context(), input.Request)
+		custerr := s.authUsecase.LogOut(c.Request().Context())
 		switch custerr.Type {
 		default:
 			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, custerr.GenerateStdlibHTTPResponse(nil), nil)
