@@ -40,14 +40,6 @@ func (s *service) handleLogIn() echo.HandlerFunc {
 
 func (s *service) handleLogOut() echo.HandlerFunc {
 	return func(c echo.Context) error {
-		var input = struct {
-			Request   *model.LogOutInput `json:"request"`
-			Signature string             `json:"signature"`
-		}{}
-		if c.Bind(&input) != nil || input.Request == nil {
-			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil)
-		}
-
 		custerr := s.authUsecase.LogOut(c.Request().Context())
 		switch custerr.Type {
 		default:

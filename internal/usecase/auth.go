@@ -143,8 +143,7 @@ func (u *authUc) LogOut(ctx context.Context) *common.Error {
 	})
 
 	user := model.GetUserFromCtx(ctx)
-	encoded := u.sharedCryptor.ReverseSecureToken(user.AccessToken)
-	session, err := u.accessTokenRepo.FindByToken(ctx, encoded)
+	session, err := u.accessTokenRepo.FindByToken(ctx, user.AccessToken)
 	switch err {
 	default:
 		logger.WithError(err).Error("failed to find session from db")
