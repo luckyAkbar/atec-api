@@ -251,7 +251,6 @@ func TestAuthUsecase_LogOut(t *testing.T) {
 		{
 			Name: "token not found",
 			MockFn: func() {
-				mockSharedCryptor.EXPECT().ReverseSecureToken(au.AccessToken).Times(1).Return(tokenEnc)
 				mockAccessTokenRepo.EXPECT().FindByToken(ctx, tokenEnc).Times(1).Return(nil, repository.ErrNotFound)
 			},
 			Run: func() {
@@ -264,7 +263,6 @@ func TestAuthUsecase_LogOut(t *testing.T) {
 		{
 			Name: "failed to find token",
 			MockFn: func() {
-				mockSharedCryptor.EXPECT().ReverseSecureToken(au.AccessToken).Times(1).Return(tokenEnc)
 				mockAccessTokenRepo.EXPECT().FindByToken(ctx, tokenEnc).Times(1).Return(nil, errors.New("err db"))
 			},
 			Run: func() {
@@ -277,7 +275,6 @@ func TestAuthUsecase_LogOut(t *testing.T) {
 		{
 			Name: "failed to delete token",
 			MockFn: func() {
-				mockSharedCryptor.EXPECT().ReverseSecureToken(au.AccessToken).Times(1).Return(tokenEnc)
 				mockAccessTokenRepo.EXPECT().FindByToken(ctx, tokenEnc).Times(1).Return(token, nil)
 				mockAccessTokenRepo.EXPECT().DeleteByID(ctx, token.ID).Times(1).Return(errors.New("err db"))
 			},
@@ -291,7 +288,6 @@ func TestAuthUsecase_LogOut(t *testing.T) {
 		{
 			Name: "ok",
 			MockFn: func() {
-				mockSharedCryptor.EXPECT().ReverseSecureToken(au.AccessToken).Times(1).Return(tokenEnc)
 				mockAccessTokenRepo.EXPECT().FindByToken(ctx, tokenEnc).Times(1).Return(token, nil)
 				mockAccessTokenRepo.EXPECT().DeleteByID(ctx, token.ID).Times(1).Return(nil)
 			},
