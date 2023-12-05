@@ -113,6 +113,6 @@ type AccessTokenRepository interface {
 // AuthUsecase auth usecase
 type AuthUsecase interface {
 	LogIn(ctx context.Context, input *LogInInput) (*LogInOutput, *common.Error)
-	LogOut(ctx context.Context, input *LogOutInput) *common.Error
+	LogOut(ctx context.Context) *common.Error
 	ValidateAccess(ctx context.Context, token string) (*AuthUser, *common.Error)
 }

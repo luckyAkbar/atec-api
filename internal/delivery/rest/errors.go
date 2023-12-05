@@ -25,6 +25,13 @@ var (
 		Type:    echo.ErrUnauthorized,
 	}
 
+	ErrNotFound = &common.Error{
+		Message: "resource not found",
+		Cause:   errors.New("resource not found"),
+		Code:    http.StatusNotFound,
+		Type:    echo.ErrNotFound,
+	}
+
 	ErrInternal = &common.Error{
 		Message: "internal server error",
 		Cause:   errors.New("internal server error"),

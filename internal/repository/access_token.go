@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"reflect"
 
 	"github.com/google/uuid"
 	"github.com/luckyAkbar/atec-api/internal/model"
@@ -95,14 +96,15 @@ func (r *accessTokenRepo) FindCredentialByToken(ctx context.Context, token strin
 			"users"."role"
 		`).Joins(`FULL JOIN "users" ON "access_tokens"."user_id" = "users"."id"`).
 		Where(`"access_tokens"."token" = ?`, token).Scan(&result).Error
-	switch err {
-	default:
-		logger.WithError(err).Error("failed to read access token data and user data from db")
+
+	if err != nil {
+		logger.WithError(err).Error("failed to read credentials data from db")
 		return nil, nil, err
-	case gorm.ErrRecordNotFound:
-		return nil, nil, ErrNotFound
-	case nil:
-		return &result.AccessToken, &result.User, nil
 	}
 
+	if reflect.ValueOf(result.AccessToken).IsZero() || reflect.ValueOf(result.User).IsZero() {
+		return nil, nil, ErrNotFound
+	}
+
+	return &result.AccessToken, &result.User, nil
 }

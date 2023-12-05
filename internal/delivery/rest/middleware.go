@@ -1,7 +1,6 @@
 package rest
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -15,7 +14,6 @@ func (s *service) authMiddleware(adminOnly bool) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			token := getAccessToken(c.Request())
-			fmt.Println(token)
 			if token == "" {
 				return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrUnauthorized.GenerateStdlibHTTPResponse(nil), nil)
 			}
@@ -31,7 +29,7 @@ func (s *service) authMiddleware(adminOnly bool) echo.MiddlewareFunc {
 				}).Error("failed to validate access")
 				return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrInternal.GenerateStdlibHTTPResponse(nil), nil)
 			case usecase.ErrResourceNotFound:
-				return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrUnauthorized.GenerateStdlibHTTPResponse(nil), nil)
+				return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrNotFound.GenerateStdlibHTTPResponse(nil), nil)
 			case nil:
 				break
 			}
