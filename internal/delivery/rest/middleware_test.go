@@ -137,7 +137,7 @@ func TestRest_authMiddleware(t *testing.T) {
 				}
 
 				mockAuthUc.EXPECT().ValidateAccess(ectx.Request().Context(), "secretboss").Times(1).Return(nil, cerr)
-				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, ErrUnauthorized.GenerateStdlibHTTPResponse(nil), nil).Times(1).Return(nil)
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, ErrNotFound.GenerateStdlibHTTPResponse(nil), nil).Times(1).Return(nil)
 
 				fn := func(c echo.Context) error {
 					return nil
