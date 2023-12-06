@@ -18,6 +18,7 @@ import (
 	"github.com/luckyAkbar/atec-api/internal/repository"
 	"github.com/luckyAkbar/atec-api/internal/usecase"
 	"github.com/luckyAkbar/atec-api/internal/worker"
+	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/sweet-go/stdlib/encryption"
@@ -42,6 +43,14 @@ func serverFn(_ *cobra.Command, _ []string) {
 		panic(err)
 	}
 
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:         config.RedisAddr(),
+		Password:     config.RedisPassword(),
+		DB:           config.RedisCacheDB(),
+		MinIdleConns: config.RedisMinIdleConn(),
+		MaxIdleConns: config.RedisMaxIdleConn(),
+	})
+
 	sharedCryptor := common.NewSharedCryptor(&common.CreateCryptorOpts{
 		HashCost:      bcrypt.DefaultCost,
 		EncryptionKey: key.Bytes,
@@ -57,8 +66,9 @@ func serverFn(_ *cobra.Command, _ []string) {
 	})
 
 	db.InitializePostgresConn()
+	cacher := db.NewCacher(redisClient)
 
-	userRepo := repository.NewUserRepository(db.PostgresDB)
+	userRepo := repository.NewUserRepository(db.PostgresDB, cacher)
 	pinRepo := repository.NewPinRepository(db.PostgresDB)
 	emailRepo := repository.NewEmailRepository(db.PostgresDB)
 	accessTokenRepo := repository.NewAccessTokenRepository(db.PostgresDB)
