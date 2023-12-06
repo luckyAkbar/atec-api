@@ -92,7 +92,7 @@ func ServerPort() string {
 }
 
 func IVKey() string {
-	return viper.GetString("server.auth.iv_key")
+	return viper.GetString("server.auth.iv")
 }
 
 // SendinblueAPIKey get API key for send in blue
