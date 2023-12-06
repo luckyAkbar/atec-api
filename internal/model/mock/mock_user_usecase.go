@@ -9,6 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	uuid "github.com/google/uuid"
 	common "github.com/luckyAkbar/atec-api/internal/common"
 	model "github.com/luckyAkbar/atec-api/internal/model"
 )
@@ -34,6 +35,21 @@ func NewMockUserUsecase(ctrl *gomock.Controller) *MockUserUsecase {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockUserUsecase) EXPECT() *MockUserUsecaseMockRecorder {
 	return m.recorder
+}
+
+// InitiateResetPassword mocks base method.
+func (m *MockUserUsecase) InitiateResetPassword(arg0 context.Context, arg1 uuid.UUID) (*model.InitiateResetPasswordOutput, *common.Error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InitiateResetPassword", arg0, arg1)
+	ret0, _ := ret[0].(*model.InitiateResetPasswordOutput)
+	ret1, _ := ret[1].(*common.Error)
+	return ret0, ret1
+}
+
+// InitiateResetPassword indicates an expected call of InitiateResetPassword.
+func (mr *MockUserUsecaseMockRecorder) InitiateResetPassword(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitiateResetPassword", reflect.TypeOf((*MockUserUsecase)(nil).InitiateResetPassword), arg0, arg1)
 }
 
 // SignUp mocks base method.
