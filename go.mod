@@ -12,6 +12,7 @@ require (
 	github.com/kumparan/go-utils v1.30.0
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/lib/pq v1.10.7
+	github.com/redis/go-redis/v9 v9.3.0
 	github.com/rubenv/sql-migrate v1.5.2
 	github.com/sendinblue/APIv3-go-library v2.0.0+incompatible
 	github.com/sirupsen/logrus v1.9.0
@@ -77,7 +78,6 @@ require (
 	github.com/pelletier/go-toml v1.2.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/redis/go-redis/v9 v9.2.0 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/spf13/afero v1.2.2 // indirect

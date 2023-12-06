@@ -7,6 +7,11 @@ server:
     expiry_minutes: 5
   log:
     level: "DEBUG"
+  auth:
+    access_token_duration_minutes: 60
+    iv: ""
+  user:
+    change_password_base_url: ""
 
 postgres:
   host: ""
@@ -15,6 +20,13 @@ postgres:
   pw: ""
   port: "5432"
   ssl_mode: "disable"
+
+redis:
+  addr: 
+  password: 
+  db: 
+  min: 
+  max: 
 
 worker:
   log_level: "DEBUG"

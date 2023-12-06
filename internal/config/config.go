@@ -91,6 +91,10 @@ func ServerPort() string {
 	return fmt.Sprintf(":%s", viper.GetString("server.port"))
 }
 
+func IVKey() string {
+	return viper.GetString("server.auth.iv")
+}
+
 // SendinblueAPIKey get API key for send in blue
 func SendinblueAPIKey() string {
 	return viper.GetString("sendinblue.api_key")
@@ -162,4 +166,34 @@ func AccessTokenActiveDuration() time.Duration {
 	}
 
 	return time.Minute * time.Duration(minutes)
+}
+
+// ChangePasswordBaseURL return change password base url. Should point to FE page and immediately check the session validity
+func ChangePasswordBaseURL() string {
+	return viper.GetString("server.user.change_password_base_url")
+}
+
+// RedisAddr redis address
+func RedisAddr() string {
+	return viper.GetString("redis.addr")
+}
+
+// RedisPassword redis password
+func RedisPassword() string {
+	return viper.GetString("redis.password")
+}
+
+// RedisCacheDB redis db
+func RedisCacheDB() int {
+	return viper.GetInt("redis.db")
+}
+
+// RedisMinIdleConn min idle
+func RedisMinIdleConn() int {
+	return viper.GetInt("redis.min")
+}
+
+// RedisMaxIdleConn max idle
+func RedisMaxIdleConn() int {
+	return viper.GetInt("redis.max")
 }

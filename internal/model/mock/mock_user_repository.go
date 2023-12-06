@@ -7,6 +7,7 @@ package mock
 import (
 	context "context"
 	reflect "reflect"
+	time "time"
 
 	gomock "github.com/golang/mock/gomock"
 	uuid "github.com/google/uuid"
@@ -51,6 +52,20 @@ func (mr *MockUserRepositoryMockRecorder) Create(arg0, arg1, arg2 interface{}) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockUserRepository)(nil).Create), arg0, arg1, arg2)
 }
 
+// CreateChangePasswordSession mocks base method.
+func (m *MockUserRepository) CreateChangePasswordSession(arg0 context.Context, arg1 string, arg2 time.Duration, arg3 *model.ChangePasswordSession) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateChangePasswordSession", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateChangePasswordSession indicates an expected call of CreateChangePasswordSession.
+func (mr *MockUserRepositoryMockRecorder) CreateChangePasswordSession(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateChangePasswordSession", reflect.TypeOf((*MockUserRepository)(nil).CreateChangePasswordSession), arg0, arg1, arg2, arg3)
+}
+
 // FindByEmail mocks base method.
 func (m *MockUserRepository) FindByEmail(arg0 context.Context, arg1 string) (*model.User, error) {
 	m.ctrl.T.Helper()
@@ -64,6 +79,21 @@ func (m *MockUserRepository) FindByEmail(arg0 context.Context, arg1 string) (*mo
 func (mr *MockUserRepositoryMockRecorder) FindByEmail(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByEmail", reflect.TypeOf((*MockUserRepository)(nil).FindByEmail), arg0, arg1)
+}
+
+// FindByID mocks base method.
+func (m *MockUserRepository) FindByID(arg0 context.Context, arg1 uuid.UUID) (*model.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindByID", arg0, arg1)
+	ret0, _ := ret[0].(*model.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindByID indicates an expected call of FindByID.
+func (mr *MockUserRepositoryMockRecorder) FindByID(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByID", reflect.TypeOf((*MockUserRepository)(nil).FindByID), arg0, arg1)
 }
 
 // UpdateActiveStatus mocks base method.

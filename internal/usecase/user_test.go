@@ -16,6 +16,7 @@ import (
 	"github.com/luckyAkbar/atec-api/internal/repository"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
 )
 
 func TestUserUsecase_SignUp(t *testing.T) {
@@ -443,4 +444,198 @@ func TestUserUsecase_generatePinForOTP(t *testing.T) {
 		assert.Equal(t, res, "123456")
 	}
 	viper.Reset()
+}
+
+func TestUserUsecase_InitiateResetPassword(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	ctrl := gomock.NewController(t)
+
+	mockUserRepo := mock.NewMockUserRepository(ctrl)
+	mockPinRepo := mock.NewMockPinRepository(ctrl)
+	mockEmailUsecase := mock.NewMockEmailUsecase(ctrl)
+	mockSharedCryptor := commonMock.NewMockSharedCryptor(ctrl)
+
+	user := model.AuthUser{
+		UserID:      uuid.New(),
+		Role:        model.RoleUser,
+		AccessToken: "token1",
+	}
+
+	admin := model.AuthUser{
+		UserID:      uuid.New(),
+		Role:        model.RoleAdmin,
+		AccessToken: "token2",
+	}
+
+	plainEmail := "email@mail.com"
+	emailEnc := "encEmail"
+
+	targetUser := &model.User{
+		ID:       user.UserID,
+		Email:    emailEnc,
+		Username: "username",
+		IsActive: true,
+	}
+
+	ctx := context.Background()
+	ctxAdmin := model.SetUserToCtx(ctx, admin)
+	ctxUser := model.SetUserToCtx(ctx, user)
+
+	uc := NewUserUsecase(mockUserRepo, mockPinRepo, mockSharedCryptor, mockEmailUsecase, kit.DB)
+
+	tests := []common.TestStructure{
+		{
+			Name:   "uuid is nil",
+			MockFn: func() {},
+			Run: func() {
+				_, cerr := uc.InitiateResetPassword(ctx, uuid.Nil)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Code, http.StatusBadRequest)
+				assert.Equal(t, cerr.Type, ErrInputResetPasswordInvalid)
+			},
+		},
+		{
+			Name:   "safety check: self change password",
+			MockFn: func() {},
+			Run: func() {
+				_, cerr := uc.InitiateResetPassword(ctxAdmin, admin.UserID)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Code, http.StatusBadRequest)
+				assert.Equal(t, cerr.Type, ErrInputResetPasswordInvalid)
+			},
+		},
+		{
+			Name:   "safety check: requester role is user",
+			MockFn: func() {},
+			Run: func() {
+				_, cerr := uc.InitiateResetPassword(ctxUser, uuid.New())
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Code, http.StatusBadRequest)
+				assert.Equal(t, cerr.Type, ErrInputResetPasswordInvalid)
+			},
+		},
+		{
+			Name: "failed to query user from db",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindByID(ctxAdmin, user.UserID).Times(1).Return(nil, errors.New("err db"))
+			},
+			Run: func() {
+				_, cerr := uc.InitiateResetPassword(ctxAdmin, user.UserID)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
+				assert.Equal(t, cerr.Type, ErrInternal)
+			},
+		},
+		{
+			Name: "user is not found",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindByID(ctxAdmin, user.UserID).Times(1).Return(nil, repository.ErrNotFound)
+			},
+			Run: func() {
+				_, cerr := uc.InitiateResetPassword(ctxAdmin, user.UserID)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Code, http.StatusNotFound)
+				assert.Equal(t, cerr.Type, ErrResourceNotFound)
+			},
+		},
+		{
+			Name: "user is blocked by is active status",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindByID(ctxAdmin, user.UserID).Times(1).Return(&model.User{
+					IsActive: false,
+				}, nil)
+			},
+			Run: func() {
+				_, cerr := uc.InitiateResetPassword(ctxAdmin, user.UserID)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Code, http.StatusPreconditionFailed)
+				assert.Equal(t, cerr.Type, ErrUserIsBlocked)
+			},
+		},
+		{
+			Name: "user is blocked by deleted at",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindByID(ctxAdmin, user.UserID).Times(1).Return(&model.User{
+					IsActive: true,
+					DeletedAt: gorm.DeletedAt{
+						Time:  time.Now(),
+						Valid: true,
+					},
+				}, nil)
+			},
+			Run: func() {
+				_, cerr := uc.InitiateResetPassword(ctxAdmin, user.UserID)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Code, http.StatusPreconditionFailed)
+				assert.Equal(t, cerr.Type, ErrUserIsBlocked)
+			},
+		},
+		{
+			Name: "failed to write reset pw session",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindByID(ctxAdmin, user.UserID).Times(1).Return(targetUser, nil)
+				mockUserRepo.EXPECT().CreateChangePasswordSession(ctxAdmin, gomock.Any(), time.Minute*15, gomock.Any()).Times(1).Return(errors.New("err db"))
+			},
+			Run: func() {
+				_, cerr := uc.InitiateResetPassword(ctxAdmin, user.UserID)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
+				assert.Equal(t, cerr.Type, ErrInternal)
+			},
+		},
+		{
+			Name: "failed to decrypt user email",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindByID(ctxAdmin, user.UserID).Times(1).Return(targetUser, nil)
+				mockUserRepo.EXPECT().CreateChangePasswordSession(ctxAdmin, gomock.Any(), time.Minute*15, gomock.Any()).Times(1).Return(nil)
+				mockSharedCryptor.EXPECT().Decrypt(targetUser.Email).Times(1).Return("", errors.New("err dec"))
+			},
+			Run: func() {
+				_, cerr := uc.InitiateResetPassword(ctxAdmin, user.UserID)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
+				assert.Equal(t, cerr.Type, ErrInternal)
+			},
+		},
+		{
+			Name: "failed to register email",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindByID(ctxAdmin, user.UserID).Times(1).Return(targetUser, nil)
+				mockUserRepo.EXPECT().CreateChangePasswordSession(ctxAdmin, gomock.Any(), time.Minute*15, gomock.Any()).Times(1).Return(nil)
+				mockSharedCryptor.EXPECT().Decrypt(targetUser.Email).Times(1).Return(plainEmail, nil)
+				mockEmailUsecase.EXPECT().Register(ctxAdmin, gomock.Any()).Times(1).Return(nil, errors.New("err"))
+			},
+			Run: func() {
+				_, cerr := uc.InitiateResetPassword(ctxAdmin, user.UserID)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
+				assert.Equal(t, cerr.Type, ErrInternal)
+			},
+		},
+		{
+			Name: "ok",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindByID(ctxAdmin, user.UserID).Times(1).Return(targetUser, nil)
+				mockUserRepo.EXPECT().CreateChangePasswordSession(ctxAdmin, gomock.Any(), time.Minute*15, gomock.Any()).Times(1).Return(nil)
+				mockSharedCryptor.EXPECT().Decrypt(targetUser.Email).Times(1).Return(plainEmail, nil)
+				mockEmailUsecase.EXPECT().Register(ctxAdmin, gomock.Any()).Times(1).Return(&model.Email{ID: uuid.New()}, nil)
+			},
+			Run: func() {
+				res, cerr := uc.InitiateResetPassword(ctxAdmin, user.UserID)
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res.ID, targetUser.ID)
+				assert.Equal(t, res.Email, plainEmail)
+				assert.Equal(t, res.Username, targetUser.Username)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
 }
