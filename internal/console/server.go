@@ -54,7 +54,7 @@ func serverFn(_ *cobra.Command, _ []string) {
 	sharedCryptor := common.NewSharedCryptor(&common.CreateCryptorOpts{
 		HashCost:      bcrypt.DefaultCost,
 		EncryptionKey: key.Bytes,
-		IV:            "4e6064d3814c2cd22c550155655fefc6", //4e6064d3814c2cd22c550155655fefc6
+		IV:            config.IVKey(),
 		BlockSize:     common.DefaultBlockSize,
 	})
 

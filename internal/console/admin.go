@@ -8,6 +8,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/luckyAkbar/atec-api/internal/common"
+	"github.com/luckyAkbar/atec-api/internal/config"
 	"github.com/luckyAkbar/atec-api/internal/db"
 	"github.com/luckyAkbar/atec-api/internal/model"
 	"github.com/luckyAkbar/atec-api/internal/repository"
@@ -65,7 +66,7 @@ func adminFn(cmd *cobra.Command, _ []string) {
 	sharedCryptor := common.NewSharedCryptor(&common.CreateCryptorOpts{
 		HashCost:      bcrypt.DefaultCost,
 		EncryptionKey: key.Bytes,
-		IV:            "4e6064d3814c2cd22c550155655fefc6", //4e6064d3814c2cd22c550155655fefc6
+		IV:            config.IVKey(),
 		BlockSize:     common.DefaultBlockSize,
 	})
 

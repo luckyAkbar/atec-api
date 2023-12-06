@@ -91,6 +91,10 @@ func ServerPort() string {
 	return fmt.Sprintf(":%s", viper.GetString("server.port"))
 }
 
+func IVKey() string {
+	return viper.GetString("server.auth.iv_key")
+}
+
 // SendinblueAPIKey get API key for send in blue
 func SendinblueAPIKey() string {
 	return viper.GetString("sendinblue.api_key")
