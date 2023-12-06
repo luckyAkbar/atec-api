@@ -46,8 +46,8 @@ var (
 	// ErrAccessTokenExpired is returned when access token is expired
 	ErrAccessTokenExpired = errors.New("002005")
 
-	// ErrForbiddenAdminOnly is returned when user is not admin, but trying to access admin only resource
-	ErrForbiddenAdminOnly = errors.New("002006")
+	// ErrInputResetPasswordInvalid is returned when input is invalid
+	ErrInputResetPasswordInvalid = errors.New("002006")
 )
 
 var nilErr = &common.Error{

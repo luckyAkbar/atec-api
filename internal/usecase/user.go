@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -283,6 +284,113 @@ func (u *userUc) VerifyAccount(ctx context.Context, input *model.AccountVerifica
 	}, nil, nilErr
 }
 
+func (u *userUc) InitiateResetPassword(ctx context.Context, userID uuid.UUID) (*model.InitiateResetPasswordOutput, *common.Error) {
+	requester := model.GetUserFromCtx(ctx)
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func":      "userUc.InitiateResetPassword",
+		"userID":    userID,
+		"requester": helper.Dump(requester),
+	})
+
+	if userID == uuid.Nil {
+		return nil, &common.Error{
+			Message: "user ID is required",
+			Cause:   errors.New("user ID is required"),
+			Code:    http.StatusBadRequest,
+			Type:    ErrInputResetPasswordInvalid,
+		}
+	}
+
+	// safety check
+	if userID == requester.UserID || requester.Role != model.RoleAdmin {
+		return nil, &common.Error{
+			Message: "unable to initiate reset password for yourself",
+			Cause:   errors.New("unable to initiate reset password for yourself"),
+			Code:    http.StatusBadRequest,
+			Type:    ErrInputResetPasswordInvalid,
+		}
+	}
+
+	user, err := u.userRepo.FindByID(ctx, userID)
+	switch err {
+	default:
+		logger.WithError(err).Error("failed to find user by id")
+		return nil, &common.Error{
+			Message: "failed to find user by id",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	case repository.ErrNotFound:
+		return nil, &common.Error{
+			Message: "data not found",
+			Cause:   err,
+			Code:    http.StatusNotFound,
+			Type:    ErrResourceNotFound,
+		}
+	case nil:
+		break
+	}
+
+	if user.IsBlocked() {
+		return nil, &common.Error{
+			Message: "user is blocked or inactive",
+			Cause:   errors.New("user is blocked or inactive"),
+			Code:    http.StatusPreconditionFailed,
+			Type:    ErrUserIsBlocked,
+		}
+	}
+
+	expiryDur := time.Minute * 15
+	key := base64.StdEncoding.EncodeToString([]byte(helper.GenerateUniqueName()))
+	link := fmt.Sprintf("%skey=%s", config.ChangePasswordBaseURL(), key)
+	changePwSess := &model.ChangePasswordSession{
+		UserID:    user.ID,
+		ExpiredAt: time.Now().Add(expiryDur).UTC(),
+		CreatedAt: time.Now().UTC(),
+		CreatedBy: requester.UserID,
+	}
+
+	if err := u.userRepo.CreateChangePasswordSession(ctx, key, expiryDur, changePwSess); err != nil {
+		logger.WithError(err).Error("failed to create change paswword session")
+		return nil, &common.Error{
+			Message: "failed to create change paswword session",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	}
+
+	emailDec, err := u.sharedCryptor.Decrypt(user.Email)
+	if err != nil {
+		logger.WithError(err).Error("failed to decrypt email")
+		return nil, &common.Error{
+			Message: "failed to decrypt user email",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	}
+
+	mailInfo, err := u.emailUsecase.Register(ctx, generateEmailTemplateForResetPassword(user.Username, emailDec, link))
+	if err != nil {
+		logger.WithError(err).Error("failed to register email")
+		return nil, &common.Error{
+			Message: "failed to register email",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	}
+
+	logger.Debug("mail info:", helper.Dump(mailInfo))
+	return &model.InitiateResetPasswordOutput{
+		ID:       user.ID,
+		Username: user.Username,
+		Email:    emailDec,
+	}, nilErr
+}
+
 func generatePinForOTP() string {
 	// was made for easier testing on a non production environment
 	if strings.ToLower(config.Env()) == "local" {
@@ -316,6 +424,19 @@ func generateEmailTemplateForPinVerification(username, email, pin string) *model
 			</p> Untuk mengaktifkan akun Anda, silakan masukan kode PIN berikut</p> <br>
 			<h3><strong>%s</strong></h3>
 		`, username, pin),
+		To: []string{email},
+	}
+}
+
+func generateEmailTemplateForResetPassword(username, email, link string) *model.RegisterEmailInput {
+	return &model.RegisterEmailInput{
+		Subject: "Reset Password",
+		Body: fmt.Sprintf(`
+			<h2>Halo %s!</h2>
+			<p>Berdasarkan permintaan admin sistem, berikut adalah link untuk melakukan reset password akun anda.</p>
+			</p>Untuk melanjutkan, silahkan klik: <a href="%s">reset password</a>.</p> <br>
+			<p>Jika anda tidak jadi untuk berniat mereset password, silahkan abaikan email ini dan login menggunakan akun yang sama.</p>
+		`, username, link),
 		To: []string{email},
 	}
 }
