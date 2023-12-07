@@ -132,3 +132,61 @@ func TestEmailRepository_FindByID(t *testing.T) {
 		})
 	}
 }
+
+func TestEmailRepository_Update(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	repo := NewEmailRepository(kit.DB)
+	mock := kit.DBmock
+	ctx := context.Background()
+
+	e := &model.Email{
+		ID:        uuid.New(),
+		Subject:   "test subject",
+		Body:      "test body",
+		To:        pq.StringArray{"test1@gmail.com", "test1@test.com"},
+		Cc:        pq.StringArray{"test2@gmail.com", "test2@test.com"},
+		Bcc:       pq.StringArray{"test3@gmail.com", "test3@test.com"},
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
+	}
+
+	tests := []common.TestStructure{
+		{
+			Name: "ok",
+			MockFn: func() {
+				mock.ExpectBegin()
+				mock.ExpectExec(`^UPDATE "emails" SET`).
+					WithArgs(e.Subject, e.Body, e.To, e.Cc, e.Bcc, e.SentAt, e.ClientSignature, e.Metadata, e.CreatedAt, sqlmock.AnyArg(), e.DeletedAt, e.ID).
+					WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectCommit()
+			},
+			Run: func() {
+				err := repo.Update(ctx, e)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name: "err db",
+			MockFn: func() {
+				mock.ExpectBegin()
+				mock.ExpectExec(`^UPDATE "emails" SET`).
+					WithArgs(e.Subject, e.Body, e.To, e.Cc, e.Bcc, e.SentAt, e.ClientSignature, e.Metadata, e.CreatedAt, sqlmock.AnyArg(), e.DeletedAt, e.ID).
+					WillReturnError(errors.New("db error"))
+				mock.ExpectCommit()
+			},
+			Run: func() {
+				err := repo.Update(ctx, e)
+				assert.Error(t, err)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}

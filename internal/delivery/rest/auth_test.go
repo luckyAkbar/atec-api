@@ -304,3 +304,111 @@ func TestRest_handleLogOut(t *testing.T) {
 		})
 	}
 }
+
+func TestRest_handleValidateResetPasswordSession(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockAPIRespGen := httpMock.NewMockAPIResponseGenerator(ctrl)
+	mockAuthUc := mock.NewMockAuthUsecase(ctrl)
+
+	tests := []common.TestStructure{
+		{
+			Name:   "usecase return err internal",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					authUsecase:          mockAuthUc,
+				}
+				req := httptest.NewRequest(http.MethodPost, "/", nil)
+				req.Header.Set("Content-Type", "application/json")
+
+				key := "key"
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+				ectx.QueryParams().Add("key", key)
+
+				mockAuthUc.EXPECT().ValidateResetPasswordSession(ectx.Request().Context(), key).Times(1).Return(&common.Error{
+					Type: usecase.ErrInternal,
+					Code: http.StatusInternalServerError,
+				})
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, ErrInternal.GenerateStdlibHTTPResponse(nil), nil)
+
+				err := restService.handleValidateResetPasswordSession()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name:   "usecase return specific err",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					authUsecase:          mockAuthUc,
+				}
+				req := httptest.NewRequest(http.MethodPost, "/", nil)
+				req.Header.Set("Content-Type", "application/json")
+
+				key := "key"
+				cerr := &common.Error{
+					Message: "reset password session is expired",
+					Cause:   errors.New("reset password session is expired"),
+					Code:    http.StatusForbidden,
+					Type:    usecase.ErrResetPasswordSessionExpired,
+				}
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+				ectx.QueryParams().Add("key", key)
+
+				mockAuthUc.EXPECT().ValidateResetPasswordSession(ectx.Request().Context(), key).Times(1).Return(cerr)
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, cerr.GenerateStdlibHTTPResponse(nil), nil)
+
+				err := restService.handleValidateResetPasswordSession()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name:   "ok",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					authUsecase:          mockAuthUc,
+				}
+				req := httptest.NewRequest(http.MethodPost, "/", nil)
+				req.Header.Set("Content-Type", "application/json")
+
+				key := "key"
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+				ectx.QueryParams().Add("key", key)
+
+				mockAuthUc.EXPECT().ValidateResetPasswordSession(ectx.Request().Context(), key).Times(1).Return(&common.Error{
+					Type: nil,
+				})
+
+				err := restService.handleValidateResetPasswordSession()(ectx)
+				assert.NoError(t, err)
+				assert.Equal(t, rec.Result().StatusCode, http.StatusOK)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
