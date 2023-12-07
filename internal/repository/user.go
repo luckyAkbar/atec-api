@@ -140,3 +140,21 @@ func (r *userRepo) FindChangePasswordSession(ctx context.Context, key string) (*
 
 	return session, nil
 }
+
+func (r *userRepo) Update(ctx context.Context, user *model.User, tx *gorm.DB) error {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func": "userRepo.Update",
+	})
+
+	if tx == nil {
+		tx = r.db
+	}
+
+	err := tx.WithContext(ctx).Save(user).Error
+	if err != nil {
+		logger.WithError(err).Error("failed to update user")
+		return err
+	}
+
+	return nil
+}

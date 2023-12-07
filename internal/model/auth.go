@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/luckyAkbar/atec-api/internal/common"
+	"gopkg.in/guregu/null.v4"
 	"gorm.io/gorm"
 )
 
@@ -102,6 +103,30 @@ func GetUserFromCtx(ctx context.Context) *AuthUser {
 	return &user
 }
 
+// ResetPasswordInput input for reset password process
+type ResetPasswordInput struct {
+	Key                 string `json:"key" validate:"required"`
+	Password            string `json:"password" validate:"required,min=8"`
+	PasswordConfimation string `json:"passwordConfirmation" validate:"required,min=8,eqfield=Password"`
+}
+
+// Validate validates struct
+func (s *ResetPasswordInput) Validate() error {
+	return validator.Struct(s)
+}
+
+// ResetPasswordResponse will be returned when reset password success
+type ResetPasswordResponse struct {
+	ID        uuid.UUID `json:"id"`
+	Email     string    `json:"email"`
+	Username  string    `json:"username"`
+	IsActive  bool      `json:"isActive"`
+	Role      Role      `json:"role"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	DeletedAt null.Time `json:"deletedAt,omitempty"`
+}
+
 // AccessTokenRepository access token repository
 type AccessTokenRepository interface {
 	Create(ctx context.Context, at *AccessToken) error
@@ -116,4 +141,5 @@ type AuthUsecase interface {
 	LogOut(ctx context.Context) *common.Error
 	ValidateAccess(ctx context.Context, token string) (*AuthUser, *common.Error)
 	ValidateResetPasswordSession(ctx context.Context, key string) *common.Error
+	ResetPassword(ctx context.Context, input *ResetPasswordInput) (*ResetPasswordResponse, *common.Error)
 }
