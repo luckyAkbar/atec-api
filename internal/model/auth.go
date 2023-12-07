@@ -115,4 +115,5 @@ type AuthUsecase interface {
 	LogIn(ctx context.Context, input *LogInInput) (*LogInOutput, *common.Error)
 	LogOut(ctx context.Context) *common.Error
 	ValidateAccess(ctx context.Context, token string) (*AuthUser, *common.Error)
+	ValidateResetPasswordSession(ctx context.Context, key string) *common.Error
 }

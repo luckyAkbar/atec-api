@@ -79,3 +79,17 @@ func (mr *MockAuthUsecaseMockRecorder) ValidateAccess(arg0, arg1 interface{}) *g
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateAccess", reflect.TypeOf((*MockAuthUsecase)(nil).ValidateAccess), arg0, arg1)
 }
+
+// ValidateResetPasswordSession mocks base method.
+func (m *MockAuthUsecase) ValidateResetPasswordSession(arg0 context.Context, arg1 string) *common.Error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ValidateResetPasswordSession", arg0, arg1)
+	ret0, _ := ret[0].(*common.Error)
+	return ret0
+}
+
+// ValidateResetPasswordSession indicates an expected call of ValidateResetPasswordSession.
+func (mr *MockAuthUsecaseMockRecorder) ValidateResetPasswordSession(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateResetPasswordSession", reflect.TypeOf((*MockAuthUsecase)(nil).ValidateResetPasswordSession), arg0, arg1)
+}

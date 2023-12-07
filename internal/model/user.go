@@ -110,6 +110,11 @@ func (cps *ChangePasswordSession) ToJSONString() string {
 	return string(res)
 }
 
+// IsExpired check whether the ChangePasswordSession is expired by its ExpiredAt against time.Now
+func (cps *ChangePasswordSession) IsExpired() bool {
+	return cps.ExpiredAt.Before(time.Now().UTC())
+}
+
 // InitiateResetPasswordOutput will be returned when initiate reset password is successfull
 type InitiateResetPasswordOutput struct {
 	ID       uuid.UUID `json:"id"`
@@ -131,4 +136,5 @@ type UserRepository interface {
 	UpdateActiveStatus(ctx context.Context, id uuid.UUID, status bool) (*User, error)
 	FindByID(ctx context.Context, id uuid.UUID) (*User, error)
 	CreateChangePasswordSession(ctx context.Context, key string, expiry time.Duration, session *ChangePasswordSession) error
+	FindChangePasswordSession(ctx context.Context, key string) (*ChangePasswordSession, error)
 }

@@ -96,6 +96,21 @@ func (mr *MockUserRepositoryMockRecorder) FindByID(arg0, arg1 interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByID", reflect.TypeOf((*MockUserRepository)(nil).FindByID), arg0, arg1)
 }
 
+// FindChangePasswordSession mocks base method.
+func (m *MockUserRepository) FindChangePasswordSession(arg0 context.Context, arg1 string) (*model.ChangePasswordSession, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindChangePasswordSession", arg0, arg1)
+	ret0, _ := ret[0].(*model.ChangePasswordSession)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindChangePasswordSession indicates an expected call of FindChangePasswordSession.
+func (mr *MockUserRepositoryMockRecorder) FindChangePasswordSession(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindChangePasswordSession", reflect.TypeOf((*MockUserRepository)(nil).FindChangePasswordSession), arg0, arg1)
+}
+
 // UpdateActiveStatus mocks base method.
 func (m *MockUserRepository) UpdateActiveStatus(arg0 context.Context, arg1 uuid.UUID, arg2 bool) (*model.User, error) {
 	m.ctrl.T.Helper()

@@ -2,10 +2,12 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/luckyAkbar/atec-api/internal/model"
+	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 	"github.com/sweet-go/stdlib/helper"
 	"gorm.io/gorm"
@@ -111,4 +113,30 @@ func (r *userRepo) CreateChangePasswordSession(ctx context.Context, key string, 
 	}
 
 	return nil
+}
+
+func (r *userRepo) FindChangePasswordSession(ctx context.Context, key string) (*model.ChangePasswordSession, error) {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func": "userRepo.FindChangePasswordSession",
+		"key":  key,
+	})
+
+	res, err := r.cacher.Get(ctx, key)
+	switch err {
+	default:
+		logger.WithError(err).Error("failed to read change password session from cache")
+		return nil, err
+	case redis.Nil:
+		return nil, ErrNotFound
+	case nil:
+		break
+	}
+
+	session := &model.ChangePasswordSession{}
+	if err := json.Unmarshal([]byte(res), session); err != nil {
+		logger.WithError(err).Error("failed to unmarshal change password session")
+		return nil, err
+	}
+
+	return session, nil
 }

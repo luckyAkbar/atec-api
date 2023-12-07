@@ -31,23 +31,29 @@ var (
 	// ErrPinInvalid is returned when pin is invalid
 	ErrPinInvalid = errors.New("001005")
 
+	// ErrInputResetPasswordInvalid is returned when input is invalid
+	ErrInputResetPasswordInvalid = errors.New("001006")
+
 	// ErrUserIsBlocked is returned when user is blocked to access this service
 	ErrUserIsBlocked = errors.New("002001")
 
 	// ErrInvalidPassword is returned when password is invalid
 	ErrInvalidPassword = errors.New("002002")
 
-	// ErrInvalidLoginInput is returned when login input is invalid, such as empty email, empty password, etc.
+	// ErrInvalidLoginInput is returned when login input is invalid
 	ErrInvalidLoginInput = errors.New("002003")
 
-	// ErrInvalidLogoutInput is returned when login input is invalid, such as empty email, empty password, etc.
+	// ErrInvalidLogoutInput is returned when login input is invalid
 	ErrInvalidLogoutInput = errors.New("002004")
 
 	// ErrAccessTokenExpired is returned when access token is expired
 	ErrAccessTokenExpired = errors.New("002005")
 
-	// ErrInputResetPasswordInvalid is returned when input is invalid
-	ErrInputResetPasswordInvalid = errors.New("002006")
+	// ErrInvalidValidateChangePasswordSessionInput is returned when input is invalid
+	ErrInvalidValidateChangePasswordSessionInput = errors.New("002006")
+
+	// ErrResetPasswordSessionExpired is returned when reset password session is expired
+	ErrResetPasswordSessionExpired = errors.New("002007")
 )
 
 var nilErr = &common.Error{

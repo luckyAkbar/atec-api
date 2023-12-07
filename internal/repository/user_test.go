@@ -11,6 +11,7 @@ import (
 	"github.com/luckyAkbar/atec-api/internal/common"
 	"github.com/luckyAkbar/atec-api/internal/model"
 	"github.com/luckyAkbar/atec-api/internal/model/mock"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 )
@@ -145,6 +146,68 @@ func TestUserRepository_FindByEmail(t *testing.T) {
 	}
 }
 
+func TestUserRepository_UpdateActiveStatus(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	mockCacher := mock.NewMockCacher(kit.Ctrl)
+	repo := NewUserRepository(kit.DB, mockCacher)
+	ctx := context.Background()
+	mock := kit.DBmock
+	id := uuid.New()
+	status := true
+
+	tests := []common.TestStructure{
+		{
+			Name: "ok",
+			MockFn: func() {
+				mock.ExpectBegin()
+				mock.ExpectQuery(`^UPDATE "users" SET`).
+					WithArgs(status, sqlmock.AnyArg(), id).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(id))
+				mock.ExpectCommit()
+			},
+			Run: func() {
+				_, err := repo.UpdateActiveStatus(ctx, id, status)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name: "not found",
+			MockFn: func() {
+				mock.ExpectBegin()
+				mock.ExpectQuery(`^UPDATE "users" SET`).
+					WithArgs(status, sqlmock.AnyArg(), id).WillReturnError(gorm.ErrRecordNotFound)
+				mock.ExpectRollback()
+			},
+			Run: func() {
+				_, err := repo.UpdateActiveStatus(ctx, id, status)
+				assert.Error(t, err)
+				assert.Equal(t, err, ErrNotFound)
+			},
+		},
+		{
+			Name: "db err",
+			MockFn: func() {
+				mock.ExpectBegin()
+				mock.ExpectQuery(`^UPDATE "users" SET`).
+					WithArgs(status, sqlmock.AnyArg(), id).WillReturnError(errors.New("err db"))
+				mock.ExpectRollback()
+			},
+			Run: func() {
+				_, err := repo.UpdateActiveStatus(ctx, id, status)
+				assert.Error(t, err)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
+
 func TestUserRepository_CreateChangePasswordSession(t *testing.T) {
 	kit, closer := common.InitializeRepoTestKit(t)
 	defer closer()
@@ -235,6 +298,74 @@ func TestUserRepository_FindByID(t *testing.T) {
 				_, err := repo.FindByID(ctx, id)
 				assert.Error(t, err)
 				assert.Equal(t, err.Error(), "db err")
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
+
+func TestUserRepository_FindChangePasswordSession(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	mockCacher := mock.NewMockCacher(kit.Ctrl)
+	repo := NewUserRepository(kit.DB, mockCacher)
+	ctx := context.Background()
+	key := "key"
+	session := &model.ChangePasswordSession{
+		UserID:    uuid.New(),
+		ExpiredAt: time.Now().Add(time.Minute * 15).UTC(),
+		CreatedAt: time.Now().UTC(),
+		CreatedBy: uuid.New(),
+	}
+
+	tests := []common.TestStructure{
+		{
+			Name: "ok found",
+			MockFn: func() {
+				mockCacher.EXPECT().Get(ctx, key).Times(1).Return(session.ToJSONString(), nil)
+			},
+			Run: func() {
+				res, err := repo.FindChangePasswordSession(ctx, key)
+				assert.NoError(t, err)
+				assert.Equal(t, res, session)
+			},
+		},
+		{
+			Name: "not found",
+			MockFn: func() {
+				mockCacher.EXPECT().Get(ctx, key).Times(1).Return("", redis.Nil)
+			},
+			Run: func() {
+				_, err := repo.FindChangePasswordSession(ctx, key)
+				assert.Error(t, err)
+				assert.Equal(t, err, ErrNotFound)
+			},
+		},
+		{
+			Name: "db err",
+			MockFn: func() {
+				mockCacher.EXPECT().Get(ctx, key).Times(1).Return("", errors.New("err db"))
+			},
+			Run: func() {
+				_, err := repo.FindChangePasswordSession(ctx, key)
+				assert.Error(t, err)
+			},
+		},
+		{
+			Name: "somehow returning invalid json",
+			MockFn: func() {
+				mockCacher.EXPECT().Get(ctx, key).Times(1).Return("invalid{json}", nil)
+			},
+			Run: func() {
+				_, err := repo.FindChangePasswordSession(ctx, key)
+				assert.Error(t, err)
 			},
 		},
 	}

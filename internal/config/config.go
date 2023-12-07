@@ -91,6 +91,7 @@ func ServerPort() string {
 	return fmt.Sprintf(":%s", viper.GetString("server.port"))
 }
 
+// IVKey return server iv key
 func IVKey() string {
 	return viper.GetString("server.auth.iv")
 }
