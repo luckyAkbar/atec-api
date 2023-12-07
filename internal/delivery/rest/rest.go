@@ -33,4 +33,5 @@ func (s *service) initRoutes() {
 	s.rootGroup.POST("/auth/sessions/", s.handleLogIn())
 	s.rootGroup.DELETE("/auth/sessions/", s.handleLogOut(), s.authMiddleware(false))
 	s.rootGroup.GET("/auth/reset-password/", s.handleValidateResetPasswordSession())
+	s.rootGroup.PATCH("/auth/reset-password/", s.handleResetPassword())
 }

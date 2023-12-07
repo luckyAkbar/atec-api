@@ -54,6 +54,9 @@ var (
 
 	// ErrResetPasswordSessionExpired is returned when reset password session is expired
 	ErrResetPasswordSessionExpired = errors.New("002007")
+
+	// ErrInvalidResetPasswordInput is returned when input is invalid
+	ErrInvalidResetPasswordInput = errors.New("002008")
 )
 
 var nilErr = &common.Error{

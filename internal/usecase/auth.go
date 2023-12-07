@@ -14,6 +14,7 @@ import (
 	"github.com/luckyAkbar/atec-api/internal/repository"
 	"github.com/sirupsen/logrus"
 	"github.com/sweet-go/stdlib/helper"
+	"gopkg.in/guregu/null.v4"
 )
 
 type authUc struct {
@@ -267,4 +268,119 @@ func (u *authUc) ValidateResetPasswordSession(ctx context.Context, key string) *
 	}
 
 	return nilErr
+}
+
+func (u *authUc) ResetPassword(ctx context.Context, input *model.ResetPasswordInput) (*model.ResetPasswordResponse, *common.Error) {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func": "authUc.ResetPassword",
+		"key":  input.Key,
+	})
+
+	if err := input.Validate(); err != nil {
+		return nil, &common.Error{
+			Message: "invalid reset password input",
+			Cause:   err,
+			Code:    http.StatusBadRequest,
+			Type:    ErrInvalidResetPasswordInput,
+		}
+	}
+
+	session, err := u.userRepo.FindChangePasswordSession(ctx, input.Key)
+	switch err {
+	default:
+		logger.WithError(err).Error("failed to find reset password session")
+		return nil, &common.Error{
+			Message: "failed to find reset password session",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	case repository.ErrNotFound:
+		return nil, &common.Error{
+			Message: "not found",
+			Cause:   repository.ErrNotFound,
+			Code:    http.StatusNotFound,
+			Type:    ErrResourceNotFound,
+		}
+	case nil:
+		break
+	}
+
+	if session.IsExpired() {
+		return nil, &common.Error{
+			Message: "reset password session is expired",
+			Cause:   errors.New("reset password session is expired"),
+			Code:    http.StatusForbidden,
+			Type:    ErrResetPasswordSessionExpired,
+		}
+	}
+
+	user, err := u.userRepo.FindByID(ctx, session.UserID)
+	switch err {
+	default:
+		logger.WithError(err).Error("faild to find user by id")
+		return nil, &common.Error{
+			Message: "faild to find user by idn",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	case repository.ErrNotFound:
+		return nil, &common.Error{
+			Message: "not found",
+			Cause:   repository.ErrNotFound,
+			Code:    http.StatusNotFound,
+			Type:    ErrResourceNotFound,
+		}
+	case nil:
+		break
+	}
+
+	// safety check
+	if user.IsBlocked() {
+		return nil, &common.Error{
+			Message: "user is blocked or inactive",
+			Cause:   errors.New("user is blocked or inactive"),
+			Code:    http.StatusPreconditionFailed,
+			Type:    ErrUserIsBlocked,
+		}
+	}
+
+	hashedPassword, err := u.sharedCryptor.Hash([]byte(input.Password))
+	if err != nil {
+		return nil, &common.Error{
+			Message: "failed to hash password",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	}
+
+	user.Password = hashedPassword
+	user.UpdatedAt = time.Now().UTC()
+	if err := u.userRepo.Update(ctx, user, nil); err != nil {
+		logger.WithError(err).Error("faild to update user password")
+		return nil, &common.Error{
+			Message: "faild to update user data",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	}
+
+	emailDec, err := u.sharedCryptor.Decrypt(user.Email)
+	if err != nil {
+		logger.WithError(err).Error("failed to decrypt email. continue...")
+	}
+
+	return &model.ResetPasswordResponse{
+		ID:        user.ID,
+		Email:     emailDec,
+		Username:  user.Username,
+		IsActive:  user.IsActive,
+		Role:      user.Role,
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
+		DeletedAt: null.NewTime(user.DeletedAt.Time, user.DeletedAt.Valid),
+	}, nilErr
 }

@@ -137,4 +137,5 @@ type UserRepository interface {
 	FindByID(ctx context.Context, id uuid.UUID) (*User, error)
 	CreateChangePasswordSession(ctx context.Context, key string, expiry time.Duration, session *ChangePasswordSession) error
 	FindChangePasswordSession(ctx context.Context, key string) (*ChangePasswordSession, error)
+	Update(ctx context.Context, user *User, tx *gorm.DB) error
 }
