@@ -52,3 +52,20 @@ func (s *service) handleLogOut() echo.HandlerFunc {
 		}
 	}
 }
+
+func (s *service) handleValidateResetPasswordSession() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		key := c.QueryParam("key")
+		custerr := s.authUsecase.ValidateResetPasswordSession(c.Request().Context(), key)
+		switch custerr.Type {
+		default:
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, custerr.GenerateStdlibHTTPResponse(nil), nil)
+		case usecase.ErrInternal:
+			logrus.WithContext(c.Request().Context()).WithError(custerr.Cause).Error("failed to handle log out request")
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrInternal.GenerateStdlibHTTPResponse(nil), nil)
+		case nil:
+			return c.NoContent(http.StatusOK)
+		}
+
+	}
+}

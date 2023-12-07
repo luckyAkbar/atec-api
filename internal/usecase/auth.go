@@ -220,3 +220,51 @@ func (u *authUc) ValidateAccess(ctx context.Context, token string) (*model.AuthU
 		Role:        user.Role,
 	}, nilErr
 }
+
+func (u *authUc) ValidateResetPasswordSession(ctx context.Context, key string) *common.Error {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func": "authUc.ValidateResetPasswordSession",
+		"key":  key,
+	})
+
+	if key == "" {
+		return &common.Error{
+			Message: "invalid key",
+			Cause:   errors.New("invalid key"),
+			Code:    http.StatusBadRequest,
+			Type:    ErrInvalidValidateChangePasswordSessionInput,
+		}
+	}
+
+	session, err := u.userRepo.FindChangePasswordSession(ctx, key)
+	switch err {
+	default:
+		logger.WithError(err).Error("failed to find reset password session")
+		return &common.Error{
+			Message: "failed to find reset password session",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	case repository.ErrNotFound:
+		return &common.Error{
+			Message: "not found",
+			Cause:   repository.ErrNotFound,
+			Code:    http.StatusNotFound,
+			Type:    ErrResourceNotFound,
+		}
+	case nil:
+		break
+	}
+
+	if session.IsExpired() {
+		return &common.Error{
+			Message: "reset password session is expired",
+			Cause:   errors.New("reset password session is expired"),
+			Code:    http.StatusForbidden,
+			Type:    ErrResetPasswordSessionExpired,
+		}
+	}
+
+	return nilErr
+}
