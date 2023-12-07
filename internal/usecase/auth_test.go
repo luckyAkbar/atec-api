@@ -491,3 +491,247 @@ func TestAuthUsecase_ValidateResetPasswordSession(t *testing.T) {
 		})
 	}
 }
+
+func TestAuthUsecase_ResetPassword(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	ctx := context.Background()
+	mockAccessTokenRepo := mock.NewMockAccessTokenRepository(ctrl)
+	mockUserRepo := mock.NewMockUserRepository(ctrl)
+	mockSharedCryptor := commonMock.NewMockSharedCryptor(ctrl)
+
+	uc := NewAuthUsecase(mockAccessTokenRepo, mockUserRepo, mockSharedCryptor)
+	input := &model.ResetPasswordInput{
+		Key:                 "valid key oke",
+		Password:            "validpassword",
+		PasswordConfimation: "validpassword",
+	}
+
+	changePwSess := &model.ChangePasswordSession{
+		UserID:    uuid.New(),
+		ExpiredAt: time.Now().Add(time.Minute * 15).UTC(),
+		CreatedAt: time.Now().UTC(),
+		CreatedBy: uuid.New(),
+	}
+
+	u := &model.User{
+		ID:        uuid.New(),
+		Email:     "email",
+		Password:  "XXXXXXXX",
+		Username:  "username",
+		IsActive:  true,
+		Role:      model.RoleAdmin,
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
+		DeletedAt: gorm.DeletedAt{},
+	}
+
+	tests := []common.TestStructure{
+		{
+			Name:   "invalid input key empty",
+			MockFn: func() {},
+			Run: func() {
+				_, cerr := uc.ResetPassword(ctx, &model.ResetPasswordInput{})
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrInvalidResetPasswordInput)
+			},
+		},
+		{
+			Name:   "invalid input password empty",
+			MockFn: func() {},
+			Run: func() {
+				_, cerr := uc.ResetPassword(ctx, &model.ResetPasswordInput{
+					Key: "somekey",
+				})
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrInvalidResetPasswordInput)
+			},
+		},
+		{
+			Name:   "invalid input password confirmation mismatch",
+			MockFn: func() {},
+			Run: func() {
+				_, cerr := uc.ResetPassword(ctx, &model.ResetPasswordInput{
+					Key:                 "somekey",
+					Password:            "passwordhmhmhm",
+					PasswordConfimation: "password??????",
+				})
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrInvalidResetPasswordInput)
+			},
+		},
+		{
+			Name:   "invalid input password only 7 chars",
+			MockFn: func() {},
+			Run: func() {
+				_, cerr := uc.ResetPassword(ctx, &model.ResetPasswordInput{
+					Key:                 "somekey",
+					Password:            "7chars.",
+					PasswordConfimation: "7chars.",
+				})
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrInvalidResetPasswordInput)
+			},
+		},
+		{
+			Name: "db err: unable to find change pw session",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindChangePasswordSession(ctx, input.Key).Times(1).Return(nil, errors.New("err"))
+			},
+			Run: func() {
+				_, cerr := uc.ResetPassword(ctx, input)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
+				assert.Equal(t, cerr.Type, ErrInternal)
+			},
+		},
+		{
+			Name: "db err: session not found",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindChangePasswordSession(ctx, input.Key).Times(1).Return(nil, repository.ErrNotFound)
+			},
+			Run: func() {
+				_, cerr := uc.ResetPassword(ctx, input)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Code, http.StatusNotFound)
+				assert.Equal(t, cerr.Type, ErrResourceNotFound)
+			},
+		},
+		{
+			Name: "db err: session is expired",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindChangePasswordSession(ctx, input.Key).Times(1).Return(&model.ChangePasswordSession{
+					ExpiredAt: time.Now().Add(time.Minute * -1).UTC(),
+				}, nil)
+			},
+			Run: func() {
+				_, cerr := uc.ResetPassword(ctx, input)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Code, http.StatusForbidden)
+				assert.Equal(t, cerr.Type, ErrResetPasswordSessionExpired)
+			},
+		},
+		{
+			Name: "db err: failed to find user data",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindChangePasswordSession(ctx, input.Key).Times(1).Return(changePwSess, nil)
+				mockUserRepo.EXPECT().FindByID(ctx, changePwSess.UserID).Times(1).Return(nil, errors.New("err"))
+			},
+			Run: func() {
+				_, cerr := uc.ResetPassword(ctx, input)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
+				assert.Equal(t, cerr.Type, ErrInternal)
+			},
+		},
+		{
+			Name: "db err: user data not found",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindChangePasswordSession(ctx, input.Key).Times(1).Return(changePwSess, nil)
+				mockUserRepo.EXPECT().FindByID(ctx, changePwSess.UserID).Times(1).Return(nil, repository.ErrNotFound)
+			},
+			Run: func() {
+				_, cerr := uc.ResetPassword(ctx, input)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Code, http.StatusNotFound)
+				assert.Equal(t, cerr.Type, ErrResourceNotFound)
+			},
+		},
+		{
+			Name: "user is blocked by active status",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindChangePasswordSession(ctx, input.Key).Times(1).Return(changePwSess, nil)
+				mockUserRepo.EXPECT().FindByID(ctx, changePwSess.UserID).Times(1).Return(&model.User{
+					IsActive: false,
+				}, nil)
+			},
+			Run: func() {
+				_, cerr := uc.ResetPassword(ctx, input)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Code, http.StatusPreconditionFailed)
+				assert.Equal(t, cerr.Type, ErrUserIsBlocked)
+			},
+		},
+		{
+			Name: "user is blocked by deleted at",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindChangePasswordSession(ctx, input.Key).Times(1).Return(changePwSess, nil)
+				mockUserRepo.EXPECT().FindByID(ctx, changePwSess.UserID).Times(1).Return(&model.User{
+					IsActive:  true,
+					DeletedAt: gorm.DeletedAt{Time: time.Now().UTC(), Valid: true},
+				}, nil)
+			},
+			Run: func() {
+				_, cerr := uc.ResetPassword(ctx, input)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Code, http.StatusPreconditionFailed)
+				assert.Equal(t, cerr.Type, ErrUserIsBlocked)
+			},
+		},
+		{
+			Name: "failed to hash user password",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindChangePasswordSession(ctx, input.Key).Times(1).Return(changePwSess, nil)
+				mockUserRepo.EXPECT().FindByID(ctx, changePwSess.UserID).Times(1).Return(u, nil)
+				mockSharedCryptor.EXPECT().Hash([]byte(input.Password)).Times(1).Return("", errors.New("err"))
+			},
+			Run: func() {
+				_, cerr := uc.ResetPassword(ctx, input)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
+				assert.Equal(t, cerr.Type, ErrInternal)
+			},
+		},
+		{
+			Name: "failed to update user password",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindChangePasswordSession(ctx, input.Key).Times(1).Return(changePwSess, nil)
+				mockUserRepo.EXPECT().FindByID(ctx, changePwSess.UserID).Times(1).Return(u, nil)
+				mockSharedCryptor.EXPECT().Hash([]byte(input.Password)).Times(1).Return("hashed", nil)
+				mockUserRepo.EXPECT().Update(ctx, gomock.Any(), nil).Times(1).Return(errors.New("err"))
+			},
+			Run: func() {
+				_, cerr := uc.ResetPassword(ctx, input)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
+				assert.Equal(t, cerr.Type, ErrInternal)
+			},
+		},
+		{
+			Name: "ok - even if failed to decrypt user email",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindChangePasswordSession(ctx, input.Key).Times(1).Return(changePwSess, nil)
+				mockUserRepo.EXPECT().FindByID(ctx, changePwSess.UserID).Times(1).Return(u, nil)
+				mockSharedCryptor.EXPECT().Hash([]byte(input.Password)).Times(1).Return("hashed", nil)
+				mockUserRepo.EXPECT().Update(ctx, gomock.Any(), nil).Times(1).Return(nil)
+				mockSharedCryptor.EXPECT().Decrypt(u.Email).Times(1).Return("", errors.New("err"))
+			},
+			Run: func() {
+				res, cerr := uc.ResetPassword(ctx, input)
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res.Email, "")
+			},
+		},
+		{
+			Name: "ok",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindChangePasswordSession(ctx, input.Key).Times(1).Return(changePwSess, nil)
+				mockUserRepo.EXPECT().FindByID(ctx, changePwSess.UserID).Times(1).Return(u, nil)
+				mockSharedCryptor.EXPECT().Hash([]byte(input.Password)).Times(1).Return("hashed", nil)
+				mockUserRepo.EXPECT().Update(ctx, gomock.Any(), nil).Times(1).Return(nil)
+				mockSharedCryptor.EXPECT().Decrypt(u.Email).Times(1).Return("decrypted", nil)
+			},
+			Run: func() {
+				res, cerr := uc.ResetPassword(ctx, input)
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res.Email, "decrypted")
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}

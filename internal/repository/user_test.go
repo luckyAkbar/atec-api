@@ -377,3 +377,62 @@ func TestUserRepository_FindChangePasswordSession(t *testing.T) {
 		})
 	}
 }
+
+func TestUserRepository_Update(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	mockCacher := mock.NewMockCacher(kit.Ctrl)
+	repo := NewUserRepository(kit.DB, mockCacher)
+	ctx := context.Background()
+	mock := kit.DBmock
+	u := &model.User{
+		ID:        uuid.New(),
+		Email:     "email",
+		Password:  "XXXXXXXX",
+		Username:  "username",
+		IsActive:  true,
+		Role:      model.RoleAdmin,
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
+		DeletedAt: gorm.DeletedAt{},
+	}
+
+	tests := []common.TestStructure{
+		{
+			Name: "ok",
+			MockFn: func() {
+				mock.ExpectBegin()
+				mock.ExpectExec(`^UPDATE "users" SET`).
+					WithArgs(u.Email, u.Password, u.Username, u.IsActive, u.Role, u.CreatedAt, sqlmock.AnyArg(), u.DeletedAt, u.ID).
+					WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectCommit()
+			},
+			Run: func() {
+				err := repo.Update(ctx, u, nil)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name: "err",
+			MockFn: func() {
+				mock.ExpectBegin()
+				mock.ExpectExec(`^UPDATE "users" SET`).
+					WithArgs(u.Email, u.Password, u.Username, u.IsActive, u.Role, u.CreatedAt, sqlmock.AnyArg(), u.DeletedAt, u.ID).
+					WillReturnError(errors.New("db err"))
+				mock.ExpectCommit()
+			},
+			Run: func() {
+				err := repo.Update(ctx, u, nil)
+				assert.Error(t, err)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}

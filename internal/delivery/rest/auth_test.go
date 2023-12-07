@@ -412,3 +412,220 @@ func TestRest_handleValidateResetPasswordSession(t *testing.T) {
 		})
 	}
 }
+
+func TestRest_handleResetPassword(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockAPIRespGen := httpMock.NewMockAPIResponseGenerator(ctrl)
+	mockAuthUc := mock.NewMockAuthUsecase(ctrl)
+
+	tests := []common.TestStructure{
+		{
+			Name:   "invalid input",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					authUsecase:          mockAuthUc,
+				}
+				req := httptest.NewRequest(http.MethodPatch, "/auth/reset-password/", strings.NewReader(`
+					{
+						"request": {
+							"key": "key",
+							"password": "newpw123456",
+							"passwordConfirmation": "newpw123456"
+						}, <- invalid here
+						"signature": "ok"
+					}
+				`))
+				req.Header.Set("Content-Type", "application/json")
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil)
+
+				err := restService.handleResetPassword()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name:   "invalid input",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					authUsecase:          mockAuthUc,
+				}
+				req := httptest.NewRequest(http.MethodPatch, "/auth/reset-password/", strings.NewReader(`
+					{
+						"signature": "ok"
+					}
+				`))
+				req.Header.Set("Content-Type", "application/json")
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil)
+
+				err := restService.handleResetPassword()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name:   "uc return internal error",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					authUsecase:          mockAuthUc,
+				}
+				req := httptest.NewRequest(http.MethodPatch, "/auth/reset-password/", strings.NewReader(`
+					{
+						"request": {
+							"key": "key",
+							"password": "newpw123456",
+							"passwordConfirmation": "newpw123456"
+						},
+						"signature": "ok"
+					}
+				`))
+				req.Header.Set("Content-Type", "application/json")
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+
+				input := &model.ResetPasswordInput{
+					Key:                 "key",
+					Password:            "newpw123456",
+					PasswordConfimation: "newpw123456",
+				}
+
+				mockAuthUc.EXPECT().ResetPassword(ectx.Request().Context(), input).Times(1).Return(nil, &common.Error{
+					Message: "err",
+					Cause:   errors.New("err"),
+					Type:    usecase.ErrInternal,
+					Code:    http.StatusInternalServerError,
+				})
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, ErrInternal.GenerateStdlibHTTPResponse(nil), nil)
+
+				err := restService.handleResetPassword()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name:   "uc return specific error",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					authUsecase:          mockAuthUc,
+				}
+				req := httptest.NewRequest(http.MethodPatch, "/auth/reset-password/", strings.NewReader(`
+					{
+						"request": {
+							"key": "key",
+							"password": "newpw123456",
+							"passwordConfirmation": "newpw123456"
+						},
+						"signature": "ok"
+					}
+				`))
+				req.Header.Set("Content-Type", "application/json")
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+
+				input := &model.ResetPasswordInput{
+					Key:                 "key",
+					Password:            "newpw123456",
+					PasswordConfimation: "newpw123456",
+				}
+
+				cerr := &common.Error{
+					Message: "err",
+					Cause:   errors.New("err"),
+					Type:    usecase.ErrInvalidResetPasswordInput,
+					Code:    http.StatusInternalServerError,
+				}
+
+				mockAuthUc.EXPECT().ResetPassword(ectx.Request().Context(), input).Times(1).Return(nil, cerr)
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, cerr.GenerateStdlibHTTPResponse(nil), nil)
+
+				err := restService.handleResetPassword()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name:   "ok",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					authUsecase:          mockAuthUc,
+				}
+				req := httptest.NewRequest(http.MethodPatch, "/auth/reset-password/", strings.NewReader(`
+					{
+						"request": {
+							"key": "key",
+							"password": "newpw123456",
+							"passwordConfirmation": "newpw123456"
+						},
+						"signature": "ok"
+					}
+				`))
+				req.Header.Set("Content-Type", "application/json")
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+
+				input := &model.ResetPasswordInput{
+					Key:                 "key",
+					Password:            "newpw123456",
+					PasswordConfimation: "newpw123456",
+				}
+
+				cerr := &common.Error{
+					Type: nil,
+				}
+
+				res := &model.ResetPasswordResponse{
+					ID: uuid.New(),
+				}
+
+				mockAuthUc.EXPECT().ResetPassword(ectx.Request().Context(), input).Times(1).Return(res, cerr)
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, &stdhttp.StandardResponse{
+					Success: true,
+					Message: "success",
+					Status:  http.StatusOK,
+					Data:    res,
+				}, nil)
+
+				err := restService.handleResetPassword()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}

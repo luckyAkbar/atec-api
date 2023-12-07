@@ -111,6 +111,20 @@ func (mr *MockUserRepositoryMockRecorder) FindChangePasswordSession(arg0, arg1 i
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindChangePasswordSession", reflect.TypeOf((*MockUserRepository)(nil).FindChangePasswordSession), arg0, arg1)
 }
 
+// Update mocks base method.
+func (m *MockUserRepository) Update(arg0 context.Context, arg1 *model.User, arg2 *gorm.DB) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Update", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Update indicates an expected call of Update.
+func (mr *MockUserRepositoryMockRecorder) Update(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockUserRepository)(nil).Update), arg0, arg1, arg2)
+}
+
 // UpdateActiveStatus mocks base method.
 func (m *MockUserRepository) UpdateActiveStatus(arg0 context.Context, arg1 uuid.UUID, arg2 bool) (*model.User, error) {
 	m.ctrl.T.Helper()
