@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/luckyAkbar/atec-api/internal/common"
 	"github.com/luckyAkbar/atec-api/internal/model"
+	"github.com/luckyAkbar/atec-api/internal/repository"
 	"github.com/sirupsen/logrus"
 	"github.com/sweet-go/stdlib/helper"
 )
@@ -60,4 +61,32 @@ func (uc *sdtUc) Create(ctx context.Context, input *model.SDTemplate) (*model.Ge
 	}
 
 	return template.ToRESTResponse(), nilErr
+}
+
+func (uc *sdtUc) FindByID(ctx context.Context, id uuid.UUID) (*model.GeneratedSDTemplate, *common.Error) {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func": "sdtUc.FindByID",
+		"id":   id.String(),
+	})
+
+	template, err := uc.sdtRepo.FindByID(ctx, id)
+	switch err {
+	default:
+		logger.WithError(err).Error("failed to find template")
+		return nil, &common.Error{
+			Message: "failed to find template",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	case repository.ErrNotFound:
+		return nil, &common.Error{
+			Message: "template not found",
+			Cause:   err,
+			Code:    http.StatusNotFound,
+			Type:    ErrResourceNotFound,
+		}
+	case nil:
+		return template.ToRESTResponse(), nilErr
+	}
 }

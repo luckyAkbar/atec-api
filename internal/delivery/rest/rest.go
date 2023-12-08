@@ -38,4 +38,5 @@ func (s *service) initRoutes() {
 	s.rootGroup.PATCH("/auth/reset-password/", s.handleResetPassword())
 
 	s.rootGroup.POST("/sdt/templates/", s.handleCreateSDTemplate(), s.authMiddleware(true))
+	s.rootGroup.GET("/sdt/templates/:id/", s.handleFindSDTemplateByID(), s.authMiddleware(true))
 }

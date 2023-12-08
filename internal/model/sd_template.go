@@ -114,9 +114,11 @@ func (sdt *SpeechDelayTemplate) ToRESTResponse() *GeneratedSDTemplate {
 // SDTemplateUsecase speech delay test template usecase
 type SDTemplateUsecase interface {
 	Create(ctx context.Context, input *SDTemplate) (*GeneratedSDTemplate, *common.Error)
+	FindByID(ctx context.Context, id uuid.UUID) (*GeneratedSDTemplate, *common.Error)
 }
 
 // SDTemplateRepository speech delay test template repository
 type SDTemplateRepository interface {
 	Create(ctx context.Context, template *SpeechDelayTemplate) error
+	FindByID(ctx context.Context, id uuid.UUID) (*SpeechDelayTemplate, error)
 }

@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/luckyAkbar/atec-api/internal/model"
 	"github.com/sirupsen/logrus"
 	"github.com/sweet-go/stdlib/helper"
@@ -30,4 +31,23 @@ func (r *sdRepo) Create(ctx context.Context, template *model.SpeechDelayTemplate
 	}
 
 	return nil
+}
+
+func (r *sdRepo) FindByID(ctx context.Context, id uuid.UUID) (*model.SpeechDelayTemplate, error) {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func":  "sdRepo.FindByID",
+		"input": helper.Dump(id),
+	})
+
+	template := &model.SpeechDelayTemplate{}
+	err := r.db.WithContext(ctx).Unscoped().Take(template, "id = ?", id).Error
+	switch err {
+	default:
+		logger.WithError(err).Error("failed to find test template by id")
+		return nil, err
+	case gorm.ErrRecordNotFound:
+		return nil, ErrNotFound
+	case nil:
+		return template, nil
+	}
 }
