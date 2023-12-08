@@ -5,12 +5,14 @@ import (
 	"errors"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/luckyAkbar/atec-api/internal/common"
 	"github.com/luckyAkbar/atec-api/internal/model"
 	"github.com/luckyAkbar/atec-api/internal/model/mock"
+	"github.com/luckyAkbar/atec-api/internal/repository"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -77,6 +79,87 @@ func TestSDTemplateUsecase_Create(t *testing.T) {
 				res, cerr := uc.Create(ctx, input)
 				assert.NoError(t, cerr.Type)
 				assert.Equal(t, res.Template.SubGroupDetails, input.SubGroupDetails)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
+
+func TestSDTemplateUsecase_FindByID(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	ctx := context.Background()
+
+	mockSDTemplateRepo := mock.NewMockSDTemplateRepository(kit.Ctrl)
+	uc := NewSDTemplateUsecase(mockSDTemplateRepo)
+
+	id := uuid.New()
+	now := time.Now()
+
+	tem := &model.SpeechDelayTemplate{
+		ID:        uuid.New(),
+		CreatedBy: uuid.New(),
+		Name:      "name",
+		IsActive:  false,
+		IsLocked:  false,
+		CreatedAt: now,
+		UpdatedAt: now,
+		Template: &model.SDTemplate{
+			Name:                   "name",
+			IndicationThreshold:    1,
+			PositiveIndiationText:  "positive",
+			NegativeIndicationText: "negative",
+			SubGroupDetails: []model.SDTemplateSubGroupDetail{
+				{
+					Name:              "name",
+					QuestionCount:     1,
+					AnswerOptionCount: 1,
+				},
+			},
+		},
+	}
+
+	tests := []common.TestStructure{
+		{
+			Name: "ok found",
+			MockFn: func() {
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id).Times(1).Return(tem, nil)
+			},
+			Run: func() {
+				res, cerr := uc.FindByID(ctx, id)
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res.ID, tem.ToRESTResponse().ID)
+			},
+		},
+		{
+			Name: "not found",
+			MockFn: func() {
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id).Times(1).Return(nil, repository.ErrNotFound)
+			},
+			Run: func() {
+				_, cerr := uc.FindByID(ctx, id)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrResourceNotFound)
+				assert.Equal(t, cerr.Code, http.StatusNotFound)
+			},
+		},
+		{
+			Name: "db err",
+			MockFn: func() {
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id).Times(1).Return(nil, errors.New("err db"))
+			},
+			Run: func() {
+				_, cerr := uc.FindByID(ctx, id)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrInternal)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
 			},
 		},
 	}

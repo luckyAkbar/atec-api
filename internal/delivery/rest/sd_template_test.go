@@ -270,3 +270,175 @@ func TestRest_handleCreateSDTemplate(t *testing.T) {
 		})
 	}
 }
+
+func TestRest_handleFindSDTemplateByID(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockAPIRespGen := httpMock.NewMockAPIResponseGenerator(ctrl)
+	mockSDTemplateUc := mock.NewMockSDTemplateUsecase(ctrl)
+
+	tests := []common.TestStructure{
+		{
+			Name:   "id empty",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					sdtemplateUsecase:    mockSDTemplateUc,
+				}
+				req := httptest.NewRequest(http.MethodPatch, "/", nil)
+				req.Header.Set("Content-Type", "application/json")
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+				ectx.SetParamNames("id")
+				ectx.SetParamValues("")
+
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil)
+
+				err := restService.handleFindSDTemplateByID()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name:   "id is invalid",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					sdtemplateUsecase:    mockSDTemplateUc,
+				}
+				req := httptest.NewRequest(http.MethodPatch, "/", nil)
+				req.Header.Set("Content-Type", "application/json")
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+				ectx.SetParamNames("id")
+				ectx.SetParamValues("obviously invalid, right?")
+
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil)
+
+				err := restService.handleFindSDTemplateByID()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name:   "usecase return err internal",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					sdtemplateUsecase:    mockSDTemplateUc,
+				}
+				req := httptest.NewRequest(http.MethodPatch, "/", nil)
+				req.Header.Set("Content-Type", "application/json")
+
+				id := uuid.New()
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+				ectx.SetParamNames("id")
+				ectx.SetParamValues(id.String())
+
+				mockSDTemplateUc.EXPECT().FindByID(ectx.Request().Context(), id).Times(1).Return(nil, &common.Error{
+					Message: "err internal",
+					Cause:   errors.New("err internal"),
+					Code:    http.StatusInternalServerError,
+					Type:    usecase.ErrInternal,
+				})
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, ErrInternal.GenerateStdlibHTTPResponse(nil), nil)
+
+				err := restService.handleFindSDTemplateByID()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name:   "usecase return spesific err",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					sdtemplateUsecase:    mockSDTemplateUc,
+				}
+				req := httptest.NewRequest(http.MethodPatch, "/", nil)
+				req.Header.Set("Content-Type", "application/json")
+
+				id := uuid.New()
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+				ectx.SetParamNames("id")
+				ectx.SetParamValues(id.String())
+
+				cerr := &common.Error{
+					Code: http.StatusBadRequest,
+					Type: usecase.ErrInputResetPasswordInvalid,
+				}
+
+				mockSDTemplateUc.EXPECT().FindByID(ectx.Request().Context(), id).Times(1).Return(nil, cerr)
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, cerr.GenerateStdlibHTTPResponse(nil), nil).Times(1).Return(nil)
+
+				err := restService.handleFindSDTemplateByID()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name:   "ok",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					sdtemplateUsecase:    mockSDTemplateUc,
+				}
+				req := httptest.NewRequest(http.MethodPatch, "/", nil)
+				req.Header.Set("Content-Type", "application/json")
+
+				id := uuid.New()
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+				ectx.SetParamNames("id")
+				ectx.SetParamValues(id.String())
+
+				cerr := &common.Error{
+					Type: nil,
+				}
+
+				res := &model.GeneratedSDTemplate{}
+
+				mockSDTemplateUc.EXPECT().FindByID(ectx.Request().Context(), id).Times(1).Return(res, cerr)
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, &stdhttp.StandardResponse{
+					Success: true,
+					Message: "success",
+					Status:  http.StatusOK,
+					Data:    res,
+				}, nil).Times(1).Return(nil)
+
+				err := restService.handleFindSDTemplateByID()(ectx)
+				assert.NoError(t, err)
+
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
