@@ -57,6 +57,9 @@ var (
 
 	// ErrInvalidResetPasswordInput is returned when input is invalid
 	ErrInvalidResetPasswordInput = errors.New("002008")
+
+	// ErrSDTemplateInputInvalid is returned when input is invalid
+	ErrSDTemplateInputInvalid = errors.New("003001")
 )
 
 var nilErr = &common.Error{
