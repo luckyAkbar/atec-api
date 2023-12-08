@@ -9,6 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	uuid "github.com/google/uuid"
 	common "github.com/luckyAkbar/atec-api/internal/common"
 	model "github.com/luckyAkbar/atec-api/internal/model"
 )
@@ -49,4 +50,19 @@ func (m *MockSDTemplateUsecase) Create(arg0 context.Context, arg1 *model.SDTempl
 func (mr *MockSDTemplateUsecaseMockRecorder) Create(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockSDTemplateUsecase)(nil).Create), arg0, arg1)
+}
+
+// FindByID mocks base method.
+func (m *MockSDTemplateUsecase) FindByID(arg0 context.Context, arg1 uuid.UUID) (*model.GeneratedSDTemplate, *common.Error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindByID", arg0, arg1)
+	ret0, _ := ret[0].(*model.GeneratedSDTemplate)
+	ret1, _ := ret[1].(*common.Error)
+	return ret0, ret1
+}
+
+// FindByID indicates an expected call of FindByID.
+func (mr *MockSDTemplateUsecaseMockRecorder) FindByID(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByID", reflect.TypeOf((*MockSDTemplateUsecase)(nil).FindByID), arg0, arg1)
 }
