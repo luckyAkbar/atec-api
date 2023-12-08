@@ -28,7 +28,6 @@ func (uc *sdtUc) Create(ctx context.Context, input *model.SDTemplate) (*model.Ge
 	})
 
 	if err := input.Validate(); err != nil {
-		logger.WithError(err).Error("validation error")
 		return nil, &common.Error{
 			Message: err.Error(),
 			Cause:   err,
