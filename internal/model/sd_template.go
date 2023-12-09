@@ -111,14 +111,70 @@ func (sdt *SpeechDelayTemplate) ToRESTResponse() *GeneratedSDTemplate {
 	}
 }
 
+// SearchSDTemplateInput input for searching SDTemplate input
+type SearchSDTemplateInput struct {
+	CreatedBy      uuid.UUID `query:"createdBy"`
+	CreatedAfter   time.Time `query:"createdAfter"`
+	IsActive       *bool     `query:"isActive"`
+	IsLocked       *bool     `query:"isLocked"`
+	IncludeDeleted bool      `query:"includeDeleted"`
+	Limit          int       `query:"limit"`
+	Offset         int       `query:"offset"`
+}
+
+// ToWhereQuery convert SearchSDTemplateInput to where query and conditions. If limit is unset / set over 100, will be set to 100.
+// If offset is unset / set under 0, will be set to 0.
+func (sdti *SearchSDTemplateInput) ToWhereQuery() ([]interface{}, []interface{}) {
+	var whereQuery []interface{}
+	var conds []interface{}
+
+	if sdti.Limit < 0 || sdti.Limit > 100 {
+		sdti.Limit = 100
+	}
+
+	if sdti.Offset < 0 {
+		sdti.Offset = 0
+	}
+
+	if sdti.CreatedBy != uuid.Nil {
+		whereQuery = append(whereQuery, "created_by = ?")
+		conds = append(conds, sdti.CreatedBy)
+	}
+
+	if !reflect.ValueOf(sdti.CreatedAfter).IsZero() {
+		whereQuery = append(whereQuery, "created_at > ?")
+		conds = append(conds, sdti.CreatedAfter.UTC())
+	}
+
+	if sdti.IsActive != nil {
+		whereQuery = append(whereQuery, "is_active = ?")
+		conds = append(conds, *sdti.IsActive)
+	}
+
+	if sdti.IsLocked != nil {
+		whereQuery = append(whereQuery, "is_locked = ?")
+		conds = append(conds, *sdti.IsLocked)
+	}
+
+	return whereQuery, conds
+}
+
+// SearchSDTemplateOutput output for searching SD Template
+type SearchSDTemplateOutput struct {
+	Templates []*GeneratedSDTemplate `json:"templates"`
+	Count     int                    `json:"count"`
+}
+
 // SDTemplateUsecase speech delay test template usecase
 type SDTemplateUsecase interface {
 	Create(ctx context.Context, input *SDTemplate) (*GeneratedSDTemplate, *common.Error)
 	FindByID(ctx context.Context, id uuid.UUID) (*GeneratedSDTemplate, *common.Error)
+	Search(ctx context.Context, input *SearchSDTemplateInput) (*SearchSDTemplateOutput, *common.Error)
 }
 
 // SDTemplateRepository speech delay test template repository
 type SDTemplateRepository interface {
 	Create(ctx context.Context, template *SpeechDelayTemplate) error
 	FindByID(ctx context.Context, id uuid.UUID) (*SpeechDelayTemplate, error)
+	Search(ctx context.Context, input *SearchSDTemplateInput) ([]*SpeechDelayTemplate, error)
 }
