@@ -81,3 +81,18 @@ func (mr *MockSDTemplateUsecaseMockRecorder) Search(arg0, arg1 interface{}) *gom
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Search", reflect.TypeOf((*MockSDTemplateUsecase)(nil).Search), arg0, arg1)
 }
+
+// Update mocks base method.
+func (m *MockSDTemplateUsecase) Update(arg0 context.Context, arg1 uuid.UUID, arg2 *model.SDTemplate) (*model.GeneratedSDTemplate, *common.Error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Update", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*model.GeneratedSDTemplate)
+	ret1, _ := ret[1].(*common.Error)
+	return ret0, ret1
+}
+
+// Update indicates an expected call of Update.
+func (mr *MockSDTemplateUsecaseMockRecorder) Update(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockSDTemplateUsecase)(nil).Update), arg0, arg1, arg2)
+}

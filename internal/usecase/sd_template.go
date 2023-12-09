@@ -28,7 +28,7 @@ func (uc *sdtUc) Create(ctx context.Context, input *model.SDTemplate) (*model.Ge
 		"input": helper.Dump(input),
 	})
 
-	if err := input.Validate(); err != nil {
+	if err := input.PartialValidation(); err != nil {
 		return nil, &common.Error{
 			Message: err.Error(),
 			Cause:   err,
@@ -117,4 +117,66 @@ func (uc *sdtUc) Search(ctx context.Context, input *model.SearchSDTemplateInput)
 		Templates: response,
 		Count:     len(response),
 	}, nilErr
+}
+
+func (uc *sdtUc) Update(ctx context.Context, id uuid.UUID, input *model.SDTemplate) (*model.GeneratedSDTemplate, *common.Error) {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func":  "sdtUc.Update",
+		"input": helper.Dump(input),
+	})
+
+	if err := input.PartialValidation(); err != nil {
+		return nil, &common.Error{
+			Message: err.Error(),
+			Cause:   err,
+			Code:    http.StatusBadRequest,
+			Type:    ErrSDTemplateInputInvalid,
+		}
+	}
+
+	template, err := uc.sdtRepo.FindByID(ctx, id)
+	switch err {
+	default:
+		logger.WithError(err).Error("failed to find speech delay template")
+		return nil, &common.Error{
+			Message: "failed to find speech delay template",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	case repository.ErrNotFound:
+		return nil, &common.Error{
+			Message: "speech delay template not found",
+			Cause:   err,
+			Code:    http.StatusNotFound,
+			Type:    ErrResourceNotFound,
+		}
+	case nil:
+		break
+	}
+
+	if template.IsLocked {
+		return nil, &common.Error{
+			Message: "speech delay template is locked",
+			Cause:   nil,
+			Code:    http.StatusForbidden,
+			Type:    ErrSDTemplateAlreadyLocked,
+		}
+	}
+
+	template.UpdatedAt = time.Now().UTC()
+	template.Name = input.Name
+	template.Template = input
+
+	if err := uc.sdtRepo.Update(ctx, template, nil); err != nil {
+		logger.WithError(err).Error("failed to update speech delay template")
+		return nil, &common.Error{
+			Message: "failed to update speech delay template",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	}
+
+	return template.ToRESTResponse(), nilErr
 }

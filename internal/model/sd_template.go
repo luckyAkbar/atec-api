@@ -16,22 +16,55 @@ import (
 // SDTemplateSubGroupDetail define what the details of every sub group used by this template
 type SDTemplateSubGroupDetail struct {
 	Name              string `json:"name" validate:"required"`
-	QuestionCount     int    `json:"questionCount" validate:"required"`
-	AnswerOptionCount int    `json:"answerOptionCount" validate:"required"`
+	QuestionCount     int    `json:"questionCount" validate:"required,min=1"`
+	AnswerOptionCount int    `json:"answerOptionCount" validate:"required,min=2"`
 }
 
 // SDTemplate define what the full SD test template will look like
 type SDTemplate struct {
 	Name                   string                     `json:"name" validate:"required,max=255"`
-	IndicationThreshold    int                        `json:"indicationThreshold" validate:"required"`
+	IndicationThreshold    int                        `json:"indicationThreshold" validate:"required,min=0"`
 	PositiveIndiationText  string                     `json:"positiveIndicationText" validate:"required"`
 	NegativeIndicationText string                     `json:"negativeIndicationText" validate:"required"`
 	SubGroupDetails        []SDTemplateSubGroupDetail `json:"subGroupDetails" validate:"min=1,dive"`
 }
 
-// Validate validate struct. For now, it's enough using built in validation rules provided by validation package
-func (csdti *SDTemplate) Validate() error {
+// PartialValidation will validate the SD Template. enough to be used for first time creating / just updating the SD Template
+func (csdti *SDTemplate) PartialValidation() error {
 	return validator.Struct(csdti)
+}
+
+// CountMaximumPoint will count the maximum point possible that can be achieved by this SD Template.
+func (csdti *SDTemplate) CountMaximumPoint() int {
+	var maximumPoint int
+	for _, subGroupDetail := range csdti.SubGroupDetails {
+		maximumPoint += subGroupDetail.QuestionCount * subGroupDetail.AnswerOptionCount
+	}
+
+	return maximumPoint
+}
+
+// CountMinimumPoint will count the minimum point possible that can be achieved by this SD Template.
+// Will always equal to the length of SubGroupDetails
+func (csdti *SDTemplate) CountMinimumPoint() int {
+	return len(csdti.SubGroupDetails)
+}
+
+// FullValidation will validate the SD Template to ensure all rules are satisfied. Suitable to be used to activate the SD Template
+func (csdti *SDTemplate) FullValidation() error {
+	if err := validator.Struct(csdti); err != nil {
+		return err
+	}
+
+	if csdti.IndicationThreshold < csdti.CountMinimumPoint() {
+		return fmt.Errorf("indicationThreshold must be greater than or equal to the number of sub group details (min: %d)", csdti.CountMinimumPoint())
+	}
+
+	if csdti.IndicationThreshold > csdti.CountMaximumPoint() {
+		return fmt.Errorf("indicationThreshold must be less than or equal to the maximum point (max: %d)", csdti.CountMaximumPoint())
+	}
+
+	return nil
 }
 
 // Scan is a function to scan database value to CreateSDTemplateInput
@@ -170,6 +203,7 @@ type SDTemplateUsecase interface {
 	Create(ctx context.Context, input *SDTemplate) (*GeneratedSDTemplate, *common.Error)
 	FindByID(ctx context.Context, id uuid.UUID) (*GeneratedSDTemplate, *common.Error)
 	Search(ctx context.Context, input *SearchSDTemplateInput) (*SearchSDTemplateOutput, *common.Error)
+	Update(ctx context.Context, id uuid.UUID, input *SDTemplate) (*GeneratedSDTemplate, *common.Error)
 }
 
 // SDTemplateRepository speech delay test template repository
@@ -177,4 +211,5 @@ type SDTemplateRepository interface {
 	Create(ctx context.Context, template *SpeechDelayTemplate) error
 	FindByID(ctx context.Context, id uuid.UUID) (*SpeechDelayTemplate, error)
 	Search(ctx context.Context, input *SearchSDTemplateInput) ([]*SpeechDelayTemplate, error)
+	Update(ctx context.Context, template *SpeechDelayTemplate, tx *gorm.DB) error
 }
