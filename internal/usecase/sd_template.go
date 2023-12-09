@@ -229,3 +229,58 @@ func (uc *sdtUc) Delete(ctx context.Context, id uuid.UUID) (*model.GeneratedSDTe
 
 	return deleted.ToRESTResponse(), nilErr
 }
+
+func (uc *sdtUc) UndoDelete(ctx context.Context, id uuid.UUID) (*model.GeneratedSDTemplate, *common.Error) {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func": "sdtUc.UndoDelete",
+		"id":   id.String(),
+	})
+
+	template, err := uc.sdtRepo.FindByID(ctx, id, true)
+	switch err {
+	default:
+		logger.WithError(err).Error("failed to find speech delay template")
+		return nil, &common.Error{
+			Message: "failed to find speech delay template",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	case repository.ErrNotFound:
+		return nil, &common.Error{
+			Message: "speech delay template not found",
+			Cause:   err,
+			Code:    http.StatusNotFound,
+			Type:    ErrResourceNotFound,
+		}
+	case nil:
+		break
+	}
+
+	if template.IsLocked {
+		return nil, &common.Error{
+			Message: "speech delay template is locked",
+			Cause:   nil,
+			Code:    http.StatusForbidden,
+			Type:    ErrSDTemplateAlreadyLocked,
+		}
+	}
+
+	// early return if still not deleted
+	if !template.DeletedAt.Valid {
+		return template.ToRESTResponse(), nilErr
+	}
+
+	res, err := uc.sdtRepo.UndoDelete(ctx, template.ID)
+	if err != nil {
+		logger.WithError(err).Error("failed to undo delete speech delay template")
+		return nil, &common.Error{
+			Message: "failed to undo delete speech delay template",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	}
+
+	return res.ToRESTResponse(), nilErr
+}
