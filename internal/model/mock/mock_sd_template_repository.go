@@ -51,19 +51,34 @@ func (mr *MockSDTemplateRepositoryMockRecorder) Create(arg0, arg1 interface{}) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockSDTemplateRepository)(nil).Create), arg0, arg1)
 }
 
-// FindByID mocks base method.
-func (m *MockSDTemplateRepository) FindByID(arg0 context.Context, arg1 uuid.UUID) (*model.SpeechDelayTemplate, error) {
+// Delete mocks base method.
+func (m *MockSDTemplateRepository) Delete(arg0 context.Context, arg1 uuid.UUID) (*model.SpeechDelayTemplate, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindByID", arg0, arg1)
+	ret := m.ctrl.Call(m, "Delete", arg0, arg1)
+	ret0, _ := ret[0].(*model.SpeechDelayTemplate)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Delete indicates an expected call of Delete.
+func (mr *MockSDTemplateRepositoryMockRecorder) Delete(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockSDTemplateRepository)(nil).Delete), arg0, arg1)
+}
+
+// FindByID mocks base method.
+func (m *MockSDTemplateRepository) FindByID(arg0 context.Context, arg1 uuid.UUID, arg2 bool) (*model.SpeechDelayTemplate, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindByID", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*model.SpeechDelayTemplate)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FindByID indicates an expected call of FindByID.
-func (mr *MockSDTemplateRepositoryMockRecorder) FindByID(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockSDTemplateRepositoryMockRecorder) FindByID(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByID", reflect.TypeOf((*MockSDTemplateRepository)(nil).FindByID), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByID", reflect.TypeOf((*MockSDTemplateRepository)(nil).FindByID), arg0, arg1, arg2)
 }
 
 // Search mocks base method.

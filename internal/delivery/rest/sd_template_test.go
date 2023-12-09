@@ -858,3 +858,155 @@ func TestRest_handleUpdateSDTemplate(t *testing.T) {
 		})
 	}
 }
+
+func TestRest_handleDeleteSDTemplate(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockAPIRespGen := httpMock.NewMockAPIResponseGenerator(ctrl)
+	mockSDTemplateUc := mock.NewMockSDTemplateUsecase(ctrl)
+
+	tests := []common.TestStructure{
+		{
+			Name:   "id empty",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					sdtemplateUsecase:    mockSDTemplateUc,
+				}
+				req := httptest.NewRequest(http.MethodPatch, "/", nil)
+				req.Header.Set("Content-Type", "application/json")
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+				ectx.SetParamNames("id")
+				ectx.SetParamValues("")
+
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil)
+
+				err := restService.handleDeleteSDTemplate()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name:   "uc return err internal",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					sdtemplateUsecase:    mockSDTemplateUc,
+				}
+				req := httptest.NewRequest(http.MethodPatch, "/", nil)
+				req.Header.Set("Content-Type", "application/json")
+
+				id := uuid.New()
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+				ectx.SetParamNames("id")
+				ectx.SetParamValues(id.String())
+
+				mockSDTemplateUc.EXPECT().Delete(ectx.Request().Context(), id).Times(1).Return(nil, &common.Error{
+					Type: usecase.ErrInternal,
+				})
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, ErrInternal.GenerateStdlibHTTPResponse(nil), nil)
+
+				err := restService.handleDeleteSDTemplate()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name:   "uc return specific err",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					sdtemplateUsecase:    mockSDTemplateUc,
+				}
+				req := httptest.NewRequest(http.MethodPatch, "/", nil)
+				req.Header.Set("Content-Type", "application/json")
+
+				id := uuid.New()
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+				ectx.SetParamNames("id")
+				ectx.SetParamValues(id.String())
+
+				cerr := &common.Error{
+					Code: http.StatusForbidden,
+					Type: usecase.ErrSDTemplateAlreadyLocked,
+				}
+
+				mockSDTemplateUc.EXPECT().Delete(ectx.Request().Context(), id).Times(1).Return(nil, cerr)
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, cerr.GenerateStdlibHTTPResponse(nil), nil)
+
+				err := restService.handleDeleteSDTemplate()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name:   "ok",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					sdtemplateUsecase:    mockSDTemplateUc,
+				}
+				req := httptest.NewRequest(http.MethodPatch, "/", nil)
+				req.Header.Set("Content-Type", "application/json")
+
+				id := uuid.New()
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+				ectx.SetParamNames("id")
+				ectx.SetParamValues(id.String())
+
+				cerr := &common.Error{
+					Type: nil,
+				}
+
+				now := time.Now().UTC()
+				template := &model.SpeechDelayTemplate{
+					ID:        uuid.New(),
+					CreatedBy: uuid.New(),
+					Name:      "ne",
+					IsActive:  false,
+					IsLocked:  false,
+					CreatedAt: now,
+					UpdatedAt: now,
+					Template:  &model.SDTemplate{},
+				}
+
+				mockSDTemplateUc.EXPECT().Delete(ectx.Request().Context(), id).Times(1).Return(template.ToRESTResponse(), cerr)
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, &stdhttp.StandardResponse{
+					Success: true,
+					Message: "success",
+					Status:  http.StatusOK,
+					Data:    template.ToRESTResponse(),
+				}, nil)
+
+				err := restService.handleDeleteSDTemplate()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}

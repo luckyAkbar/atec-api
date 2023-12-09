@@ -106,7 +106,21 @@ func TestSDTemplateRepository_FindByID(t *testing.T) {
 					WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(id))
 			},
 			Run: func() {
-				email, err := repo.FindByID(ctx, id)
+				email, err := repo.FindByID(ctx, id, true)
+				assert.NoError(t, err)
+
+				assert.Equal(t, email.ID, id)
+			},
+		},
+		{
+			Name: "ok-exclude deleted",
+			MockFn: func() {
+				mock.ExpectQuery(`^SELECT .+ FROM "test_templates" WHERE .+ "test_templates"."deleted_at" IS NULL .+`).
+					WithArgs(id).
+					WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(id))
+			},
+			Run: func() {
+				email, err := repo.FindByID(ctx, id, false)
 				assert.NoError(t, err)
 
 				assert.Equal(t, email.ID, id)
@@ -120,7 +134,7 @@ func TestSDTemplateRepository_FindByID(t *testing.T) {
 					WillReturnError(gorm.ErrRecordNotFound)
 			},
 			Run: func() {
-				_, err := repo.FindByID(ctx, id)
+				_, err := repo.FindByID(ctx, id, true)
 				assert.Error(t, err)
 
 				assert.Equal(t, err, ErrNotFound)
@@ -134,7 +148,7 @@ func TestSDTemplateRepository_FindByID(t *testing.T) {
 					WillReturnError(errors.New("err db"))
 			},
 			Run: func() {
-				_, err := repo.FindByID(ctx, id)
+				_, err := repo.FindByID(ctx, id, true)
 				assert.Error(t, err)
 				assert.Equal(t, err.Error(), "err db")
 			},
@@ -321,6 +335,60 @@ func TestSDTemplateRepository_Update(t *testing.T) {
 			},
 			Run: func() {
 				err := repo.Update(ctx, te, nil)
+				assert.Error(t, err)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
+
+func TestSDTemplateRepository_Delete(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	repo := NewSDTemplateRepository(kit.DB)
+	ctx := context.Background()
+	mock := kit.DBmock
+
+	te := &model.SpeechDelayTemplate{
+		ID:        uuid.New(),
+		CreatedBy: uuid.New(),
+		Name:      "name",
+		IsActive:  false,
+		IsLocked:  false,
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
+		Template:  &model.SDTemplate{},
+	}
+
+	tests := []common.TestStructure{
+		{
+			Name: "ok",
+			MockFn: func() {
+				mock.ExpectBegin()
+				mock.ExpectQuery(`UPDATE "test_templates" SET`).WithArgs(sqlmock.AnyArg(), te.ID).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(te.ID))
+				mock.ExpectCommit()
+			},
+			Run: func() {
+				_, err := repo.Delete(ctx, te.ID)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name: "ok",
+			MockFn: func() {
+				mock.ExpectBegin()
+				mock.ExpectQuery(`UPDATE "test_templates" SET`).WithArgs(sqlmock.AnyArg(), te.ID).WillReturnError(errors.New("err db"))
+				mock.ExpectCommit()
+			},
+			Run: func() {
+				_, err := repo.Delete(ctx, te.ID)
 				assert.Error(t, err)
 			},
 		},

@@ -69,7 +69,7 @@ func (uc *sdtUc) FindByID(ctx context.Context, id uuid.UUID) (*model.GeneratedSD
 		"id":   id.String(),
 	})
 
-	template, err := uc.sdtRepo.FindByID(ctx, id)
+	template, err := uc.sdtRepo.FindByID(ctx, id, true)
 	switch err {
 	default:
 		logger.WithError(err).Error("failed to find template")
@@ -134,7 +134,7 @@ func (uc *sdtUc) Update(ctx context.Context, id uuid.UUID, input *model.SDTempla
 		}
 	}
 
-	template, err := uc.sdtRepo.FindByID(ctx, id)
+	template, err := uc.sdtRepo.FindByID(ctx, id, false)
 	switch err {
 	default:
 		logger.WithError(err).Error("failed to find speech delay template")
@@ -179,4 +179,53 @@ func (uc *sdtUc) Update(ctx context.Context, id uuid.UUID, input *model.SDTempla
 	}
 
 	return template.ToRESTResponse(), nilErr
+}
+
+func (uc *sdtUc) Delete(ctx context.Context, id uuid.UUID) (*model.GeneratedSDTemplate, *common.Error) {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func": "sdtUc.Delete",
+		"id":   id.String(),
+	})
+
+	template, err := uc.sdtRepo.FindByID(ctx, id, false)
+	switch err {
+	default:
+		logger.WithError(err).Error("failed to find speech delay template")
+		return nil, &common.Error{
+			Message: "failed to find speech delay template",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	case repository.ErrNotFound:
+		return nil, &common.Error{
+			Message: "speech delay template not found",
+			Cause:   err,
+			Code:    http.StatusNotFound,
+			Type:    ErrResourceNotFound,
+		}
+	case nil:
+		break
+	}
+
+	if template.IsLocked {
+		return nil, &common.Error{
+			Message: "speech delay template is locked",
+			Cause:   nil,
+			Code:    http.StatusForbidden,
+			Type:    ErrSDTemplateAlreadyLocked,
+		}
+	}
+
+	deleted, err := uc.sdtRepo.Delete(ctx, template.ID)
+	if err != nil {
+		return nil, &common.Error{
+			Message: "failed to delete speech delay template",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	}
+
+	return deleted.ToRESTResponse(), nilErr
 }

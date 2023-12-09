@@ -130,7 +130,7 @@ func TestSDTemplateUsecase_FindByID(t *testing.T) {
 		{
 			Name: "ok found",
 			MockFn: func() {
-				mockSDTemplateRepo.EXPECT().FindByID(ctx, id).Times(1).Return(tem, nil)
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id, true).Times(1).Return(tem, nil)
 			},
 			Run: func() {
 				res, cerr := uc.FindByID(ctx, id)
@@ -141,7 +141,7 @@ func TestSDTemplateUsecase_FindByID(t *testing.T) {
 		{
 			Name: "not found",
 			MockFn: func() {
-				mockSDTemplateRepo.EXPECT().FindByID(ctx, id).Times(1).Return(nil, repository.ErrNotFound)
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id, true).Times(1).Return(nil, repository.ErrNotFound)
 			},
 			Run: func() {
 				_, cerr := uc.FindByID(ctx, id)
@@ -153,7 +153,7 @@ func TestSDTemplateUsecase_FindByID(t *testing.T) {
 		{
 			Name: "db err",
 			MockFn: func() {
-				mockSDTemplateRepo.EXPECT().FindByID(ctx, id).Times(1).Return(nil, errors.New("err db"))
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id, true).Times(1).Return(nil, errors.New("err db"))
 			},
 			Run: func() {
 				_, cerr := uc.FindByID(ctx, id)
@@ -290,7 +290,7 @@ func TestSDTemplateUsecase_Update(t *testing.T) {
 		{
 			Name: "ok",
 			MockFn: func() {
-				mockSDTemplateRepo.EXPECT().FindByID(ctx, id).Times(1).Return(tem, nil)
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id, false).Times(1).Return(tem, nil)
 				mockSDTemplateRepo.EXPECT().Update(ctx, tem, nil).Times(1).Return(nil)
 			},
 			Run: func() {
@@ -314,7 +314,7 @@ func TestSDTemplateUsecase_Update(t *testing.T) {
 		{
 			Name: "template not found",
 			MockFn: func() {
-				mockSDTemplateRepo.EXPECT().FindByID(ctx, id).Times(1).Return(nil, repository.ErrNotFound)
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id, false).Times(1).Return(nil, repository.ErrNotFound)
 			},
 			Run: func() {
 				_, cerr := uc.Update(ctx, id, input)
@@ -326,7 +326,7 @@ func TestSDTemplateUsecase_Update(t *testing.T) {
 		{
 			Name: "template is locked",
 			MockFn: func() {
-				mockSDTemplateRepo.EXPECT().FindByID(ctx, id).Times(1).Return(&model.SpeechDelayTemplate{
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id, false).Times(1).Return(&model.SpeechDelayTemplate{
 					ID:        uuid.New(),
 					CreatedBy: uuid.New(),
 					Name:      "name",
@@ -347,11 +347,115 @@ func TestSDTemplateUsecase_Update(t *testing.T) {
 		{
 			Name: "failed to update",
 			MockFn: func() {
-				mockSDTemplateRepo.EXPECT().FindByID(ctx, id).Times(1).Return(tem, nil)
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id, false).Times(1).Return(tem, nil)
 				mockSDTemplateRepo.EXPECT().Update(ctx, tem, nil).Times(1).Return(errors.New("err db"))
 			},
 			Run: func() {
 				_, cerr := uc.Update(ctx, id, input)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrInternal)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
+
+func TestSDTemplateUsecase_Delete(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	ctx := context.Background()
+
+	mockSDTemplateRepo := mock.NewMockSDTemplateRepository(kit.Ctrl)
+	uc := NewSDTemplateUsecase(mockSDTemplateRepo)
+
+	id := uuid.New()
+
+	now := time.Now().UTC()
+	tem := &model.SpeechDelayTemplate{
+		ID:        uuid.New(),
+		CreatedBy: uuid.New(),
+		Name:      "name",
+		IsActive:  false,
+		IsLocked:  false,
+		CreatedAt: now,
+		UpdatedAt: now,
+		Template:  &model.SDTemplate{},
+	}
+
+	tests := []common.TestStructure{
+		{
+			Name: "ok",
+			MockFn: func() {
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id, false).Times(1).Return(tem, nil)
+				mockSDTemplateRepo.EXPECT().Delete(ctx, tem.ID).Times(1).Return(tem, nil)
+			},
+			Run: func() {
+				res, cerr := uc.Delete(ctx, id)
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res, tem.ToRESTResponse())
+			},
+		},
+		{
+			Name: "not found or maybe already deleted",
+			MockFn: func() {
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id, false).Times(1).Return(nil, repository.ErrNotFound)
+			},
+			Run: func() {
+				_, cerr := uc.Delete(ctx, id)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrResourceNotFound)
+				assert.Equal(t, cerr.Code, http.StatusNotFound)
+			},
+		},
+		{
+			Name: "failed to find the sd template",
+			MockFn: func() {
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id, false).Times(1).Return(nil, errors.New("db err"))
+			},
+			Run: func() {
+				_, cerr := uc.Delete(ctx, id)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrInternal)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
+			},
+		},
+		{
+			Name: "template locked",
+			MockFn: func() {
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id, false).Times(1).Return(&model.SpeechDelayTemplate{
+					ID:        uuid.New(),
+					CreatedBy: uuid.New(),
+					Name:      "name",
+					IsActive:  true,
+					IsLocked:  true,
+					CreatedAt: now,
+					UpdatedAt: now,
+					Template:  &model.SDTemplate{},
+				}, nil)
+			},
+			Run: func() {
+				_, cerr := uc.Delete(ctx, id)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrSDTemplateAlreadyLocked)
+				assert.Equal(t, cerr.Code, http.StatusForbidden)
+			},
+		},
+		{
+			Name: "failed to delete",
+			MockFn: func() {
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id, false).Times(1).Return(tem, nil)
+				mockSDTemplateRepo.EXPECT().Delete(ctx, tem.ID).Times(1).Return(nil, errors.New("db err"))
+			},
+			Run: func() {
+				_, cerr := uc.Delete(ctx, id)
 				assert.Error(t, cerr.Type)
 				assert.Equal(t, cerr.Type, ErrInternal)
 				assert.Equal(t, cerr.Code, http.StatusInternalServerError)

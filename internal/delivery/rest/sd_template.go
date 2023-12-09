@@ -117,3 +117,29 @@ func (s *service) handleUpdateSDTemplate() echo.HandlerFunc {
 		}
 	}
 }
+
+func (s *service) handleDeleteSDTemplate() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		input := c.Param("id")
+		templateID, err := uuid.Parse(input)
+		if err != nil {
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil)
+		}
+
+		resp, custerr := s.sdtemplateUsecase.Delete(c.Request().Context(), templateID)
+		switch custerr.Type {
+		default:
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, custerr.GenerateStdlibHTTPResponse(nil), nil)
+		case usecase.ErrInternal:
+			logrus.WithContext(c.Request().Context()).WithError(custerr.Cause).Error("failed to handle log out request")
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrInternal.GenerateStdlibHTTPResponse(nil), nil)
+		case nil:
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, &stdhttp.StandardResponse{
+				Success: true,
+				Message: "success",
+				Status:  http.StatusOK,
+				Data:    resp,
+			}, nil)
+		}
+	}
+}
