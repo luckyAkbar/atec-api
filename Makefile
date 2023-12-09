@@ -42,10 +42,10 @@ ifdef test_run
 endif
 	$(eval test_command=$(TEST_BIN) ./... $(TEST_ARGS) --cover)
 
-test-only: check-gotest mockgen
+test-only: check-gotest
 	SVC_DISABLE_CACHING=true $(test_command)
 
-test: lint test-only
+test: lint mockgen test-only
 
 check-cognitive-complexity:
 	find . -type f -name '*.go' -not -name "*.pb.go" -not -name "mock*.go" -not -name "generated.go" -not -name "federation.go" \
