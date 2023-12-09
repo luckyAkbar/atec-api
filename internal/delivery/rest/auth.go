@@ -61,7 +61,7 @@ func (s *service) handleValidateResetPasswordSession() echo.HandlerFunc {
 		default:
 			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, custerr.GenerateStdlibHTTPResponse(nil), nil)
 		case usecase.ErrInternal:
-			logrus.WithContext(c.Request().Context()).WithError(custerr.Cause).Error("failed to handle log out request")
+			logrus.WithContext(c.Request().Context()).WithError(custerr.Cause).Error("failed to handle validate reset password session request")
 			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrInternal.GenerateStdlibHTTPResponse(nil), nil)
 		case nil:
 			return c.NoContent(http.StatusOK)
@@ -85,7 +85,7 @@ func (s *service) handleResetPassword() echo.HandlerFunc {
 		default:
 			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, custerr.GenerateStdlibHTTPResponse(nil), nil)
 		case usecase.ErrInternal:
-			logrus.WithContext(c.Request().Context()).WithError(custerr.Cause).Error("failed to handle log out request")
+			logrus.WithContext(c.Request().Context()).WithError(custerr.Cause).Error("failed to handle reset password request")
 			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrInternal.GenerateStdlibHTTPResponse(nil), nil)
 		case nil:
 			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, &stdhttp.StandardResponse{
