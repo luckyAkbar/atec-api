@@ -119,3 +119,20 @@ func (r *sdRepo) Delete(ctx context.Context, id uuid.UUID) (*model.SpeechDelayTe
 
 	return deleted, nil
 }
+
+func (r *sdRepo) UndoDelete(ctx context.Context, id uuid.UUID) (*model.SpeechDelayTemplate, error) {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func":  "sdRepo.Delete",
+		"input": helper.Dump(id),
+	})
+
+	template := &model.SpeechDelayTemplate{}
+	err := r.db.WithContext(ctx).Model(template).Unscoped().Clauses(clause.Returning{}).
+		Where("id = ?", id).Update("deleted_at", gorm.DeletedAt{Valid: false}).Error
+	if err != nil {
+		logger.WithError(err).Error("failed to delete speech delay template")
+		return nil, err
+	}
+
+	return template, nil
+}

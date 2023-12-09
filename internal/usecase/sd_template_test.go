@@ -14,6 +14,7 @@ import (
 	"github.com/luckyAkbar/atec-api/internal/model/mock"
 	"github.com/luckyAkbar/atec-api/internal/repository"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
 )
 
 func TestSDTemplateUsecase_Create(t *testing.T) {
@@ -456,6 +457,133 @@ func TestSDTemplateUsecase_Delete(t *testing.T) {
 			},
 			Run: func() {
 				_, cerr := uc.Delete(ctx, id)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrInternal)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
+
+func TestSDTemplateUsecase_UndoDelete(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	ctx := context.Background()
+
+	mockSDTemplateRepo := mock.NewMockSDTemplateRepository(kit.Ctrl)
+	uc := NewSDTemplateUsecase(mockSDTemplateRepo)
+
+	id := uuid.New()
+
+	now := time.Now().UTC()
+	tem := &model.SpeechDelayTemplate{
+		ID:        uuid.New(),
+		CreatedBy: uuid.New(),
+		Name:      "name",
+		IsActive:  false,
+		IsLocked:  false,
+		CreatedAt: now,
+		UpdatedAt: now,
+		DeletedAt: gorm.DeletedAt{Time: time.Now().UTC(), Valid: true},
+		Template:  &model.SDTemplate{},
+	}
+
+	tests := []common.TestStructure{
+		{
+			Name: "ok",
+			MockFn: func() {
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id, true).Times(1).Return(tem, nil)
+				mockSDTemplateRepo.EXPECT().UndoDelete(ctx, tem.ID).Times(1).Return(tem, nil)
+			},
+			Run: func() {
+				res, cerr := uc.UndoDelete(ctx, id)
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res, tem.ToRESTResponse())
+			},
+		},
+		{
+			Name: "not found",
+			MockFn: func() {
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id, true).Times(1).Return(nil, repository.ErrNotFound)
+			},
+			Run: func() {
+				_, cerr := uc.UndoDelete(ctx, id)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrResourceNotFound)
+				assert.Equal(t, cerr.Code, http.StatusNotFound)
+			},
+		},
+		{
+			Name: "failed to find the sd template",
+			MockFn: func() {
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id, true).Times(1).Return(nil, errors.New("db err"))
+			},
+			Run: func() {
+				_, cerr := uc.UndoDelete(ctx, id)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrInternal)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
+			},
+		},
+		{
+			Name: "template locked",
+			MockFn: func() {
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id, true).Times(1).Return(&model.SpeechDelayTemplate{
+					ID:        uuid.New(),
+					CreatedBy: uuid.New(),
+					Name:      "name",
+					IsActive:  true,
+					IsLocked:  true,
+					CreatedAt: now,
+					UpdatedAt: now,
+					Template:  &model.SDTemplate{},
+				}, nil)
+			},
+			Run: func() {
+				_, cerr := uc.UndoDelete(ctx, id)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrSDTemplateAlreadyLocked)
+				assert.Equal(t, cerr.Code, http.StatusForbidden)
+			},
+		},
+		{
+			Name:   "ok - template is not deleted",
+			MockFn: func() {},
+			Run: func() {
+				notDeleted := &model.SpeechDelayTemplate{
+					ID:        uuid.New(),
+					CreatedBy: uuid.New(),
+					Name:      "name",
+					IsActive:  true,
+					IsLocked:  false,
+					CreatedAt: now,
+					UpdatedAt: now,
+					DeletedAt: gorm.DeletedAt{Valid: false},
+					Template:  &model.SDTemplate{},
+				}
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id, true).Times(1).Return(notDeleted, nil)
+
+				res, cerr := uc.UndoDelete(ctx, id)
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res, notDeleted.ToRESTResponse())
+			},
+		},
+		{
+			Name: "failed to delete",
+			MockFn: func() {
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id, true).Times(1).Return(tem, nil)
+				mockSDTemplateRepo.EXPECT().UndoDelete(ctx, tem.ID).Times(1).Return(nil, errors.New("db err"))
+			},
+			Run: func() {
+				_, cerr := uc.UndoDelete(ctx, id)
 				assert.Error(t, cerr.Type)
 				assert.Equal(t, cerr.Type, ErrInternal)
 				assert.Equal(t, cerr.Code, http.StatusInternalServerError)

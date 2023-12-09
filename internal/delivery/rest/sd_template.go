@@ -26,7 +26,7 @@ func (s *service) handleCreateSDTemplate() echo.HandlerFunc {
 		default:
 			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, custerr.GenerateStdlibHTTPResponse(nil), nil)
 		case usecase.ErrInternal:
-			logrus.WithContext(c.Request().Context()).WithError(custerr.Cause).Error("failed to handle log out request")
+			logrus.WithContext(c.Request().Context()).WithError(custerr.Cause).Error("failed to handle create sd template request")
 			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrInternal.GenerateStdlibHTTPResponse(nil), nil)
 		case nil:
 			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, &stdhttp.StandardResponse{
@@ -52,7 +52,7 @@ func (s *service) handleFindSDTemplateByID() echo.HandlerFunc {
 		default:
 			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, custerr.GenerateStdlibHTTPResponse(nil), nil)
 		case usecase.ErrInternal:
-			logrus.WithContext(c.Request().Context()).WithError(custerr.Cause).Error("failed to handle log out request")
+			logrus.WithContext(c.Request().Context()).WithError(custerr.Cause).Error("failed to handle find sd template by id request")
 			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrInternal.GenerateStdlibHTTPResponse(nil), nil)
 		case nil:
 			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, &stdhttp.StandardResponse{
@@ -105,7 +105,7 @@ func (s *service) handleUpdateSDTemplate() echo.HandlerFunc {
 		default:
 			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, custerr.GenerateStdlibHTTPResponse(nil), nil)
 		case usecase.ErrInternal:
-			logrus.WithContext(c.Request().Context()).WithError(custerr.Cause).Error("failed to handle log out request")
+			logrus.WithContext(c.Request().Context()).WithError(custerr.Cause).Error("failed to handle update sd template request")
 			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrInternal.GenerateStdlibHTTPResponse(nil), nil)
 		case nil:
 			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, &stdhttp.StandardResponse{
@@ -131,7 +131,33 @@ func (s *service) handleDeleteSDTemplate() echo.HandlerFunc {
 		default:
 			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, custerr.GenerateStdlibHTTPResponse(nil), nil)
 		case usecase.ErrInternal:
-			logrus.WithContext(c.Request().Context()).WithError(custerr.Cause).Error("failed to handle log out request")
+			logrus.WithContext(c.Request().Context()).WithError(custerr.Cause).Error("failed to handle delete sd template request")
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrInternal.GenerateStdlibHTTPResponse(nil), nil)
+		case nil:
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, &stdhttp.StandardResponse{
+				Success: true,
+				Message: "success",
+				Status:  http.StatusOK,
+				Data:    resp,
+			}, nil)
+		}
+	}
+}
+
+func (s *service) handleUndoDeleteSDTemplate() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		input := c.Param("id")
+		templateID, err := uuid.Parse(input)
+		if err != nil {
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil)
+		}
+
+		resp, custerr := s.sdtemplateUsecase.UndoDelete(c.Request().Context(), templateID)
+		switch custerr.Type {
+		default:
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, custerr.GenerateStdlibHTTPResponse(nil), nil)
+		case usecase.ErrInternal:
+			logrus.WithContext(c.Request().Context()).WithError(custerr.Cause).Error("failed to undo delete sd template")
 			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrInternal.GenerateStdlibHTTPResponse(nil), nil)
 		case nil:
 			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, &stdhttp.StandardResponse{
