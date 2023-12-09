@@ -442,3 +442,122 @@ func TestRest_handleFindSDTemplateByID(t *testing.T) {
 		})
 	}
 }
+
+func TestRest_handleSearchSDTemplate(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockAPIRespGen := httpMock.NewMockAPIResponseGenerator(ctrl)
+	mockSDTemplateUc := mock.NewMockSDTemplateUsecase(ctrl)
+
+	tests := []common.TestStructure{
+		{
+			Name: "ok",
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					sdtemplateUsecase:    mockSDTemplateUc,
+				}
+				req := httptest.NewRequest(http.MethodGet, "/std/templates/", nil)
+				req.Header.Set("Content-Type", "application/json")
+
+				id := uuid.New()
+				input := &model.SearchSDTemplateInput{
+					CreatedBy: id,
+					Limit:     10,
+					Offset:    100,
+				}
+
+				resp := &model.SearchSDTemplateOutput{
+					Templates: []*model.GeneratedSDTemplate{},
+					Count:     10,
+				}
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+				ectx.QueryParams().Add("createdBy", id.String())
+				ectx.QueryParams().Add("limit", "10")
+				ectx.QueryParams().Add("offset", "100")
+
+				mockSDTemplateUc.EXPECT().Search(ectx.Request().Context(), input).Times(1).Return(resp, &common.Error{Type: nil})
+
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, &stdhttp.StandardResponse{
+					Success: true,
+					Message: "success",
+					Status:  http.StatusOK,
+					Data:    resp,
+				}, nil)
+
+				err := restService.handleSearchSDTemplate()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name: "input invalid",
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					sdtemplateUsecase:    mockSDTemplateUc,
+				}
+				req := httptest.NewRequest(http.MethodGet, "/std/templates/", nil)
+				req.Header.Set("Content-Type", "application/json")
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+
+				ectx.QueryParams().Add("createdBy", "hamdeh.")
+
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil)
+
+				err := restService.handleSearchSDTemplate()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name: "uc err",
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					sdtemplateUsecase:    mockSDTemplateUc,
+				}
+				req := httptest.NewRequest(http.MethodGet, "/std/templates/", nil)
+				req.Header.Set("Content-Type", "application/json")
+
+				id := uuid.New()
+				input := &model.SearchSDTemplateInput{
+					CreatedBy: id,
+					Limit:     10,
+					Offset:    100,
+				}
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+				ectx.QueryParams().Add("createdBy", id.String())
+				ectx.QueryParams().Add("limit", "10")
+				ectx.QueryParams().Add("offset", "100")
+
+				cerr := &common.Error{Type: usecase.ErrInternal}
+
+				mockSDTemplateUc.EXPECT().Search(ectx.Request().Context(), input).Times(1).Return(nil, cerr)
+
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, cerr.GenerateStdlibHTTPResponse(nil), nil)
+
+				err := restService.handleSearchSDTemplate()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.Run()
+		})
+	}
+}

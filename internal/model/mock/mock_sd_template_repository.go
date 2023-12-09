@@ -64,3 +64,18 @@ func (mr *MockSDTemplateRepositoryMockRecorder) FindByID(arg0, arg1 interface{})
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByID", reflect.TypeOf((*MockSDTemplateRepository)(nil).FindByID), arg0, arg1)
 }
+
+// Search mocks base method.
+func (m *MockSDTemplateRepository) Search(arg0 context.Context, arg1 *model.SearchSDTemplateInput) ([]*model.SpeechDelayTemplate, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Search", arg0, arg1)
+	ret0, _ := ret[0].([]*model.SpeechDelayTemplate)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Search indicates an expected call of Search.
+func (mr *MockSDTemplateRepositoryMockRecorder) Search(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Search", reflect.TypeOf((*MockSDTemplateRepository)(nil).Search), arg0, arg1)
+}

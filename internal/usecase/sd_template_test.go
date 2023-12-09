@@ -171,3 +171,79 @@ func TestSDTemplateUsecase_FindByID(t *testing.T) {
 		})
 	}
 }
+
+func TestSDTemplateUsecase_Search(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	ctx := context.Background()
+
+	mockSDTemplateRepo := mock.NewMockSDTemplateRepository(kit.Ctrl)
+	uc := NewSDTemplateUsecase(mockSDTemplateRepo)
+
+	trueVal := true
+	falseVal := false
+
+	input := &model.SearchSDTemplateInput{
+		CreatedBy:      uuid.New(),
+		CreatedAfter:   time.Now().Add(time.Hour * -10).UTC(),
+		IsActive:       &trueVal,
+		IsLocked:       &falseVal,
+		IncludeDeleted: false,
+		Limit:          10,
+		Offset:         0,
+	}
+
+	tests := []common.TestStructure{
+		{
+			Name: "repo err",
+			MockFn: func() {
+				mockSDTemplateRepo.EXPECT().Search(ctx, input).Times(1).Return(nil, errors.New("err db"))
+			},
+			Run: func() {
+				_, cerr := uc.Search(ctx, input)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrInternal)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
+			},
+		},
+		{
+			Name: "repo return 0 array",
+			MockFn: func() {
+				mockSDTemplateRepo.EXPECT().Search(ctx, input).Times(1).Return([]*model.SpeechDelayTemplate{}, nil)
+			},
+			Run: func() {
+				res, cerr := uc.Search(ctx, input)
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res.Count, 0)
+				assert.Equal(t, len(res.Templates), 0)
+			},
+		},
+		{
+			Name: "ok",
+			MockFn: func() {
+				mockSDTemplateRepo.EXPECT().Search(ctx, input).Times(1).Return([]*model.SpeechDelayTemplate{
+					{
+						ID: uuid.New(),
+					},
+					{
+						ID: uuid.New(),
+					},
+				}, nil)
+			},
+			Run: func() {
+				res, cerr := uc.Search(ctx, input)
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res.Count, 2)
+				assert.Equal(t, len(res.Templates), 2)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
