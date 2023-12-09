@@ -80,7 +80,8 @@ func (r *sdRepo) Search(ctx context.Context, input *model.SearchSDTemplateInput)
 
 func (r *sdRepo) Update(ctx context.Context, template *model.SpeechDelayTemplate, tx *gorm.DB) error {
 	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
-		"func": "sdRepo.Update",
+		"func":     "sdRepo.Update",
+		"template": helper.Dump(template),
 	})
 
 	if tx == nil {
