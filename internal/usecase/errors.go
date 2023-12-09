@@ -60,6 +60,9 @@ var (
 
 	// ErrSDTemplateInputInvalid is returned when input is invalid
 	ErrSDTemplateInputInvalid = errors.New("003001")
+
+	// ErrSDTemplateAlreadyLocked is returned when sd template is already locked
+	ErrSDTemplateAlreadyLocked = errors.New("003002")
 )
 
 var nilErr = &common.Error{

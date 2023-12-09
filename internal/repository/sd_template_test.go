@@ -275,3 +275,61 @@ func TestSDTemplateRepository_Search(t *testing.T) {
 		})
 	}
 }
+
+func TestSDTemplateRepository_Update(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	repo := NewSDTemplateRepository(kit.DB)
+	ctx := context.Background()
+	mock := kit.DBmock
+
+	te := &model.SpeechDelayTemplate{
+		ID:        uuid.New(),
+		CreatedBy: uuid.New(),
+		Name:      "name",
+		IsActive:  false,
+		IsLocked:  false,
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
+		Template:  &model.SDTemplate{},
+	}
+
+	tests := []common.TestStructure{
+		{
+			Name: "ok",
+			MockFn: func() {
+				mock.ExpectBegin()
+				mock.ExpectExec(`^UPDATE "test_templates" SET`).
+					WithArgs(te.CreatedBy, te.Name, te.IsActive, te.IsLocked, te.CreatedAt, sqlmock.AnyArg(), te.DeletedAt, sqlmock.AnyArg(), te.ID).
+					WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectCommit()
+			},
+			Run: func() {
+				err := repo.Update(ctx, te, nil)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name: "err db",
+			MockFn: func() {
+				mock.ExpectBegin()
+				mock.ExpectExec(`^UPDATE "test_templates" SET`).
+					WithArgs(te.CreatedBy, te.Name, te.IsActive, te.IsLocked, te.CreatedAt, sqlmock.AnyArg(), te.DeletedAt, sqlmock.AnyArg(), te.ID).
+					WillReturnError(errors.New("err db"))
+				mock.ExpectRollback()
+			},
+			Run: func() {
+				err := repo.Update(ctx, te, nil)
+				assert.Error(t, err)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}

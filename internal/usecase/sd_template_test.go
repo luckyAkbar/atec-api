@@ -247,3 +247,122 @@ func TestSDTemplateUsecase_Search(t *testing.T) {
 		})
 	}
 }
+
+func TestSDTemplateUsecase_Update(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	ctx := context.Background()
+
+	mockSDTemplateRepo := mock.NewMockSDTemplateRepository(kit.Ctrl)
+	uc := NewSDTemplateUsecase(mockSDTemplateRepo)
+
+	id := uuid.New()
+
+	input := &model.SDTemplate{
+		Name:                   "name",
+		IndicationThreshold:    10,
+		PositiveIndiationText:  "pos",
+		NegativeIndicationText: "neg",
+		SubGroupDetails: []model.SDTemplateSubGroupDetail{
+			{
+				Name:              "ok",
+				QuestionCount:     99,
+				AnswerOptionCount: 12,
+			},
+		},
+	}
+
+	now := time.Now().UTC()
+
+	tem := &model.SpeechDelayTemplate{
+		ID:        uuid.New(),
+		CreatedBy: uuid.New(),
+		Name:      "name",
+		IsActive:  false,
+		IsLocked:  false,
+		CreatedAt: now,
+		UpdatedAt: now,
+		Template:  input,
+	}
+
+	tests := []common.TestStructure{
+		{
+			Name: "ok",
+			MockFn: func() {
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id).Times(1).Return(tem, nil)
+				mockSDTemplateRepo.EXPECT().Update(ctx, tem, nil).Times(1).Return(nil)
+			},
+			Run: func() {
+				res, cerr := uc.Update(ctx, id, input)
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res, tem.ToRESTResponse())
+
+			},
+		},
+		{
+			Name: "invalid input",
+			MockFn: func() {
+			},
+			Run: func() {
+				_, cerr := uc.Update(ctx, id, &model.SDTemplate{})
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrSDTemplateInputInvalid)
+				assert.Equal(t, cerr.Code, http.StatusBadRequest)
+			},
+		},
+		{
+			Name: "template not found",
+			MockFn: func() {
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id).Times(1).Return(nil, repository.ErrNotFound)
+			},
+			Run: func() {
+				_, cerr := uc.Update(ctx, id, input)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrResourceNotFound)
+				assert.Equal(t, cerr.Code, http.StatusNotFound)
+			},
+		},
+		{
+			Name: "template is locked",
+			MockFn: func() {
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id).Times(1).Return(&model.SpeechDelayTemplate{
+					ID:        uuid.New(),
+					CreatedBy: uuid.New(),
+					Name:      "name",
+					IsActive:  false,
+					IsLocked:  true,
+					CreatedAt: now,
+					UpdatedAt: now,
+					Template:  input,
+				}, nil)
+			},
+			Run: func() {
+				_, cerr := uc.Update(ctx, id, input)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrSDTemplateAlreadyLocked)
+				assert.Equal(t, cerr.Code, http.StatusForbidden)
+			},
+		},
+		{
+			Name: "failed to update",
+			MockFn: func() {
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id).Times(1).Return(tem, nil)
+				mockSDTemplateRepo.EXPECT().Update(ctx, tem, nil).Times(1).Return(errors.New("err db"))
+			},
+			Run: func() {
+				_, cerr := uc.Update(ctx, id, input)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrInternal)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
