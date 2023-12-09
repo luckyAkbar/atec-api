@@ -204,6 +204,7 @@ type SDTemplateUsecase interface {
 	FindByID(ctx context.Context, id uuid.UUID) (*GeneratedSDTemplate, *common.Error)
 	Search(ctx context.Context, input *SearchSDTemplateInput) (*SearchSDTemplateOutput, *common.Error)
 	Update(ctx context.Context, id uuid.UUID, input *SDTemplate) (*GeneratedSDTemplate, *common.Error)
+	Delete(ctx context.Context, id uuid.UUID) (*GeneratedSDTemplate, *common.Error)
 }
 
 // SDTemplateRepository speech delay test template repository
@@ -212,4 +213,5 @@ type SDTemplateRepository interface {
 	FindByID(ctx context.Context, id uuid.UUID, includeDeleted bool) (*SpeechDelayTemplate, error)
 	Search(ctx context.Context, input *SearchSDTemplateInput) ([]*SpeechDelayTemplate, error)
 	Update(ctx context.Context, template *SpeechDelayTemplate, tx *gorm.DB) error
+	Delete(ctx context.Context, id uuid.UUID) (*SpeechDelayTemplate, error)
 }
