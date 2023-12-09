@@ -69,7 +69,7 @@ func (uc *sdtUc) FindByID(ctx context.Context, id uuid.UUID) (*model.GeneratedSD
 		"id":   id.String(),
 	})
 
-	template, err := uc.sdtRepo.FindByID(ctx, id)
+	template, err := uc.sdtRepo.FindByID(ctx, id, true)
 	switch err {
 	default:
 		logger.WithError(err).Error("failed to find template")
@@ -134,7 +134,7 @@ func (uc *sdtUc) Update(ctx context.Context, id uuid.UUID, input *model.SDTempla
 		}
 	}
 
-	template, err := uc.sdtRepo.FindByID(ctx, id)
+	template, err := uc.sdtRepo.FindByID(ctx, id, false)
 	switch err {
 	default:
 		logger.WithError(err).Error("failed to find speech delay template")

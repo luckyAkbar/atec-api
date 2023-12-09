@@ -33,14 +33,20 @@ func (r *sdRepo) Create(ctx context.Context, template *model.SpeechDelayTemplate
 	return nil
 }
 
-func (r *sdRepo) FindByID(ctx context.Context, id uuid.UUID) (*model.SpeechDelayTemplate, error) {
+func (r *sdRepo) FindByID(ctx context.Context, id uuid.UUID, includeDeleted bool) (*model.SpeechDelayTemplate, error) {
 	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
-		"func":  "sdRepo.FindByID",
-		"input": helper.Dump(id),
+		"func":           "sdRepo.FindByID",
+		"input":          helper.Dump(id),
+		"includeDeleted": includeDeleted,
 	})
 
+	query := r.db.WithContext(ctx)
+	if includeDeleted {
+		query = query.Unscoped()
+	}
+
 	template := &model.SpeechDelayTemplate{}
-	err := r.db.WithContext(ctx).Unscoped().Take(template, "id = ?", id).Error
+	err := query.Take(template, "id = ?", id).Error
 	switch err {
 	default:
 		logger.WithError(err).Error("failed to find test template by id")
