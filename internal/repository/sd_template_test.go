@@ -347,3 +347,57 @@ func TestSDTemplateRepository_Update(t *testing.T) {
 		})
 	}
 }
+
+func TestSDTemplateRepository_Delete(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	repo := NewSDTemplateRepository(kit.DB)
+	ctx := context.Background()
+	mock := kit.DBmock
+
+	te := &model.SpeechDelayTemplate{
+		ID:        uuid.New(),
+		CreatedBy: uuid.New(),
+		Name:      "name",
+		IsActive:  false,
+		IsLocked:  false,
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
+		Template:  &model.SDTemplate{},
+	}
+
+	tests := []common.TestStructure{
+		{
+			Name: "ok",
+			MockFn: func() {
+				mock.ExpectBegin()
+				mock.ExpectQuery(`UPDATE "test_templates" SET`).WithArgs(sqlmock.AnyArg(), te.ID).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(te.ID))
+				mock.ExpectCommit()
+			},
+			Run: func() {
+				_, err := repo.Delete(ctx, te.ID)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name: "ok",
+			MockFn: func() {
+				mock.ExpectBegin()
+				mock.ExpectQuery(`UPDATE "test_templates" SET`).WithArgs(sqlmock.AnyArg(), te.ID).WillReturnError(errors.New("err db"))
+				mock.ExpectCommit()
+			},
+			Run: func() {
+				_, err := repo.Delete(ctx, te.ID)
+				assert.Error(t, err)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
