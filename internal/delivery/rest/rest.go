@@ -39,5 +39,6 @@ func (s *service) initRoutes() {
 
 	s.rootGroup.POST("/sdt/templates/", s.handleCreateSDTemplate(), s.authMiddleware(true))
 	s.rootGroup.GET("/sdt/templates/:id/", s.handleFindSDTemplateByID(), s.authMiddleware(true))
+	s.rootGroup.PUT("/sdt/templates/:id/", s.handleUpdateSDTemplate(), s.authMiddleware(true))
 	s.rootGroup.GET("/sdt/templates/", s.handleSearchSDTemplate(), s.authMiddleware(true))
 }

@@ -77,3 +77,21 @@ func (r *sdRepo) Search(ctx context.Context, input *model.SearchSDTemplateInput)
 
 	return templates, nil
 }
+
+func (r *sdRepo) Update(ctx context.Context, template *model.SpeechDelayTemplate, tx *gorm.DB) error {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func": "sdRepo.Update",
+	})
+
+	if tx == nil {
+		tx = r.db
+	}
+
+	err := tx.WithContext(ctx).Save(template).Error
+	if err != nil {
+		logger.WithError(err).Error("failed to update speech delay template")
+		return err
+	}
+
+	return nil
+}
