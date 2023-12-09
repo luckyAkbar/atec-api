@@ -130,7 +130,7 @@ func TestSDTemplateUsecase_FindByID(t *testing.T) {
 		{
 			Name: "ok found",
 			MockFn: func() {
-				mockSDTemplateRepo.EXPECT().FindByID(ctx, id).Times(1).Return(tem, nil)
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id, true).Times(1).Return(tem, nil)
 			},
 			Run: func() {
 				res, cerr := uc.FindByID(ctx, id)
@@ -141,7 +141,7 @@ func TestSDTemplateUsecase_FindByID(t *testing.T) {
 		{
 			Name: "not found",
 			MockFn: func() {
-				mockSDTemplateRepo.EXPECT().FindByID(ctx, id).Times(1).Return(nil, repository.ErrNotFound)
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id, true).Times(1).Return(nil, repository.ErrNotFound)
 			},
 			Run: func() {
 				_, cerr := uc.FindByID(ctx, id)
@@ -153,7 +153,7 @@ func TestSDTemplateUsecase_FindByID(t *testing.T) {
 		{
 			Name: "db err",
 			MockFn: func() {
-				mockSDTemplateRepo.EXPECT().FindByID(ctx, id).Times(1).Return(nil, errors.New("err db"))
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id, true).Times(1).Return(nil, errors.New("err db"))
 			},
 			Run: func() {
 				_, cerr := uc.FindByID(ctx, id)
@@ -290,7 +290,7 @@ func TestSDTemplateUsecase_Update(t *testing.T) {
 		{
 			Name: "ok",
 			MockFn: func() {
-				mockSDTemplateRepo.EXPECT().FindByID(ctx, id).Times(1).Return(tem, nil)
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id, false).Times(1).Return(tem, nil)
 				mockSDTemplateRepo.EXPECT().Update(ctx, tem, nil).Times(1).Return(nil)
 			},
 			Run: func() {
@@ -314,7 +314,7 @@ func TestSDTemplateUsecase_Update(t *testing.T) {
 		{
 			Name: "template not found",
 			MockFn: func() {
-				mockSDTemplateRepo.EXPECT().FindByID(ctx, id).Times(1).Return(nil, repository.ErrNotFound)
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id, false).Times(1).Return(nil, repository.ErrNotFound)
 			},
 			Run: func() {
 				_, cerr := uc.Update(ctx, id, input)
@@ -326,7 +326,7 @@ func TestSDTemplateUsecase_Update(t *testing.T) {
 		{
 			Name: "template is locked",
 			MockFn: func() {
-				mockSDTemplateRepo.EXPECT().FindByID(ctx, id).Times(1).Return(&model.SpeechDelayTemplate{
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id, false).Times(1).Return(&model.SpeechDelayTemplate{
 					ID:        uuid.New(),
 					CreatedBy: uuid.New(),
 					Name:      "name",
@@ -347,7 +347,7 @@ func TestSDTemplateUsecase_Update(t *testing.T) {
 		{
 			Name: "failed to update",
 			MockFn: func() {
-				mockSDTemplateRepo.EXPECT().FindByID(ctx, id).Times(1).Return(tem, nil)
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id, false).Times(1).Return(tem, nil)
 				mockSDTemplateRepo.EXPECT().Update(ctx, tem, nil).Times(1).Return(errors.New("err db"))
 			},
 			Run: func() {

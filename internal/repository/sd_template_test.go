@@ -106,7 +106,21 @@ func TestSDTemplateRepository_FindByID(t *testing.T) {
 					WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(id))
 			},
 			Run: func() {
-				email, err := repo.FindByID(ctx, id)
+				email, err := repo.FindByID(ctx, id, true)
+				assert.NoError(t, err)
+
+				assert.Equal(t, email.ID, id)
+			},
+		},
+		{
+			Name: "ok-exclude deleted",
+			MockFn: func() {
+				mock.ExpectQuery(`^SELECT .+ FROM "test_templates" WHERE .+ "test_templates"."deleted_at" IS NULL .+`).
+					WithArgs(id).
+					WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(id))
+			},
+			Run: func() {
+				email, err := repo.FindByID(ctx, id, false)
 				assert.NoError(t, err)
 
 				assert.Equal(t, email.ID, id)
@@ -120,7 +134,7 @@ func TestSDTemplateRepository_FindByID(t *testing.T) {
 					WillReturnError(gorm.ErrRecordNotFound)
 			},
 			Run: func() {
-				_, err := repo.FindByID(ctx, id)
+				_, err := repo.FindByID(ctx, id, true)
 				assert.Error(t, err)
 
 				assert.Equal(t, err, ErrNotFound)
@@ -134,7 +148,7 @@ func TestSDTemplateRepository_FindByID(t *testing.T) {
 					WillReturnError(errors.New("err db"))
 			},
 			Run: func() {
-				_, err := repo.FindByID(ctx, id)
+				_, err := repo.FindByID(ctx, id, true)
 				assert.Error(t, err)
 				assert.Equal(t, err.Error(), "err db")
 			},
