@@ -90,3 +90,31 @@ func (uc *sdtUc) FindByID(ctx context.Context, id uuid.UUID) (*model.GeneratedSD
 		return template.ToRESTResponse(), nilErr
 	}
 }
+
+func (uc *sdtUc) Search(ctx context.Context, input *model.SearchSDTemplateInput) (*model.SearchSDTemplateOutput, *common.Error) {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func":  "sdtUc.Search",
+		"input": helper.Dump(input),
+	})
+
+	res, err := uc.sdtRepo.Search(ctx, input)
+	if err != nil {
+		logger.WithError(err).Error("failed to find sd template")
+		return nil, &common.Error{
+			Message: "failed to find sd template",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	}
+
+	response := []*model.GeneratedSDTemplate{}
+	for _, v := range res {
+		response = append(response, v.ToRESTResponse())
+	}
+
+	return &model.SearchSDTemplateOutput{
+		Templates: response,
+		Count:     len(response),
+	}, nilErr
+}

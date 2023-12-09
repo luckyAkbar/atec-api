@@ -148,3 +148,130 @@ func TestSDTemplateRepository_FindByID(t *testing.T) {
 		})
 	}
 }
+
+func TestSDTemplateRepository_Search(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	repo := NewSDTemplateRepository(kit.DB)
+	ctx := context.Background()
+	mock := kit.DBmock
+	id := uuid.New()
+	createdAfter := time.Now().Add(time.Hour * -9).UTC()
+
+	tests := []common.TestStructure{
+		{
+			Name: "ok - include deleted",
+			MockFn: func() {
+				mock.ExpectQuery(`SELECT .+ FROM "test_templates"`).
+					WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(uuid.New()))
+			},
+			Run: func() {
+				res, err := repo.Search(ctx, &model.SearchSDTemplateInput{
+					IncludeDeleted: true,
+				})
+
+				assert.NoError(t, err)
+				assert.Equal(t, len(res), 1)
+			},
+		},
+		{
+			Name: "ok - exclude deleted",
+			MockFn: func() {
+				mock.ExpectQuery(`SELECT .+ FROM "test_templates" .+ "test_templates"."deleted_at" IS NULL .+`).
+					WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(uuid.New()))
+			},
+			Run: func() {
+				res, err := repo.Search(ctx, &model.SearchSDTemplateInput{
+					IncludeDeleted: false,
+				})
+
+				assert.NoError(t, err)
+				assert.Equal(t, len(res), 1)
+			},
+		},
+		{
+			Name: "ok1",
+			MockFn: func() {
+				mock.ExpectQuery(`SELECT .+ FROM "test_templates" .+ "test_templates"."deleted_at" IS NULL .+`).
+					WithArgs(id).
+					WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(uuid.New()))
+			},
+			Run: func() {
+				input := &model.SearchSDTemplateInput{
+					CreatedBy:      id,
+					IncludeDeleted: false,
+				}
+				res, err := repo.Search(ctx, input)
+
+				assert.NoError(t, err)
+				assert.Equal(t, len(res), 1)
+			},
+		},
+		{
+			Name: "ok2",
+			MockFn: func() {
+				mock.ExpectQuery(`SELECT .+ FROM "test_templates"`).
+					WithArgs(id, createdAfter).
+					WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(uuid.New()))
+			},
+			Run: func() {
+				input := &model.SearchSDTemplateInput{
+					CreatedBy:      id,
+					IncludeDeleted: true,
+					CreatedAfter:   createdAfter,
+				}
+				res, err := repo.Search(ctx, input)
+
+				assert.NoError(t, err)
+				assert.Equal(t, len(res), 1)
+			},
+		},
+		{
+			Name: "ok3",
+			MockFn: func() {
+				mock.ExpectQuery(`SELECT .+ FROM "test_templates"`).
+					WithArgs(id, createdAfter).
+					WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(uuid.New()))
+			},
+			Run: func() {
+				input := &model.SearchSDTemplateInput{
+					CreatedBy:      id,
+					IncludeDeleted: true,
+					CreatedAfter:   createdAfter,
+					Limit:          10,
+				}
+				res, err := repo.Search(ctx, input)
+
+				assert.NoError(t, err)
+				assert.Equal(t, len(res), 1)
+			},
+		},
+		{
+			Name: "db err",
+			MockFn: func() {
+				mock.ExpectQuery(`SELECT .+ FROM "test_templates"`).
+					WithArgs(id, createdAfter).
+					WillReturnError(errors.New("err db"))
+			},
+			Run: func() {
+				input := &model.SearchSDTemplateInput{
+					CreatedBy:      id,
+					IncludeDeleted: true,
+					CreatedAfter:   createdAfter,
+					Limit:          10,
+				}
+				_, err := repo.Search(ctx, input)
+
+				assert.Error(t, err)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
