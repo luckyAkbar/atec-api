@@ -121,8 +121,8 @@ func (s *service) handleUpdateSDTemplate() echo.HandlerFunc {
 func (s *service) handleDeleteSDTemplate() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		input := c.Param("id")
-		templateID, parsingErr := uuid.Parse(input)
-		if parsingErr != nil {
+		templateID, err := uuid.Parse(input)
+		if err != nil {
 			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil)
 		}
 
