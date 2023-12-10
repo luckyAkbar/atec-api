@@ -598,3 +598,208 @@ func TestSDTemplateUsecase_UndoDelete(t *testing.T) {
 		})
 	}
 }
+
+func TestSDTemplateUsecase_ChangeSDTemplateActiveStatus(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	ctx := context.Background()
+
+	mockSDTemplateRepo := mock.NewMockSDTemplateRepository(kit.Ctrl)
+	uc := NewSDTemplateUsecase(mockSDTemplateRepo)
+	id := uuid.New()
+
+	now := time.Now().UTC()
+	activeTemplate := &model.SpeechDelayTemplate{
+		ID:        uuid.New(),
+		CreatedBy: uuid.New(),
+		Name:      "name",
+		IsLocked:  true,
+		IsActive:  true,
+		CreatedAt: now,
+		UpdatedAt: now,
+		Template:  &model.SDTemplate{},
+	}
+
+	inactiveTemplate := &model.SpeechDelayTemplate{
+		ID:        uuid.New(),
+		CreatedBy: uuid.New(),
+		Name:      "name",
+		IsLocked:  true,
+		IsActive:  false,
+		CreatedAt: now,
+		UpdatedAt: now,
+		Template:  &model.SDTemplate{},
+	}
+
+	tests := []common.TestStructure{
+		{
+			Name: "failed to find sd template",
+			MockFn: func() {
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id, false).Times(1).Return(nil, errors.New("db err"))
+			},
+			Run: func() {
+				_, cerr := uc.ChangeSDTemplateActiveStatus(ctx, id, true)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrInternal)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
+			},
+		},
+		{
+			Name: "template not found",
+			MockFn: func() {
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id, false).Times(1).Return(nil, repository.ErrNotFound)
+			},
+			Run: func() {
+				_, cerr := uc.ChangeSDTemplateActiveStatus(ctx, id, true)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrResourceNotFound)
+				assert.Equal(t, cerr.Code, http.StatusNotFound)
+			},
+		},
+		{
+			Name: "template status is the same with input (active = true)",
+			MockFn: func() {
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id, false).Times(1).Return(activeTemplate, nil)
+			},
+			Run: func() {
+				res, cerr := uc.ChangeSDTemplateActiveStatus(ctx, id, true)
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res, activeTemplate.ToRESTResponse())
+			},
+		},
+		{
+			Name: "template status is the same with input (active = false)",
+			MockFn: func() {
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id, false).Times(1).Return(inactiveTemplate, nil)
+			},
+			Run: func() {
+				res, cerr := uc.ChangeSDTemplateActiveStatus(ctx, id, false)
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res, inactiveTemplate.ToRESTResponse())
+			},
+		},
+		{
+			Name: "db failure on deactivating template",
+			MockFn: func() {
+
+			},
+			Run: func() {
+				tem := &model.SpeechDelayTemplate{
+					ID:        uuid.New(),
+					CreatedBy: uuid.New(),
+					Name:      "name",
+					IsLocked:  true,
+					IsActive:  true,
+					CreatedAt: now,
+					UpdatedAt: now,
+					Template:  &model.SDTemplate{},
+				}
+
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id, false).Times(1).Return(tem, nil)
+				mockSDTemplateRepo.EXPECT().Update(ctx, gomock.Any(), nil).Return(errors.New("err db"))
+
+				_, cerr := uc.ChangeSDTemplateActiveStatus(ctx, id, false)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrInternal)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
+			},
+		},
+		{
+			Name: "ok: deactivating template",
+			MockFn: func() {
+			},
+			Run: func() {
+				tem := &model.SpeechDelayTemplate{
+					ID:        uuid.New(),
+					CreatedBy: uuid.New(),
+					Name:      "name",
+					IsLocked:  true,
+					IsActive:  true,
+					CreatedAt: now,
+					UpdatedAt: now,
+					Template:  &model.SDTemplate{},
+				}
+
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id, false).Times(1).Return(tem, nil)
+				mockSDTemplateRepo.EXPECT().Update(ctx, gomock.Any(), nil).Return(nil)
+
+				res, cerr := uc.ChangeSDTemplateActiveStatus(ctx, id, false)
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res.ID, tem.ToRESTResponse().ID)
+			},
+		},
+		{
+			Name: "failed activating: failure on full validation",
+			MockFn: func() {
+			},
+			Run: func() {
+				tem := &model.SpeechDelayTemplate{
+					ID:        uuid.New(),
+					CreatedBy: uuid.New(),
+					Name:      "name",
+					IsLocked:  true,
+					IsActive:  false,
+					CreatedAt: now,
+					UpdatedAt: now,
+					Template:  &model.SDTemplate{},
+				}
+
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id, false).Times(1).Return(tem, nil)
+
+				_, cerr := uc.ChangeSDTemplateActiveStatus(ctx, id, true)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrSDTemplateCantBeActivated)
+				assert.Equal(t, cerr.Code, http.StatusForbidden)
+			},
+		},
+		{
+			Name: "ok: template activated",
+			MockFn: func() {
+			},
+			Run: func() {
+				tem := &model.SpeechDelayTemplate{
+					ID:        uuid.New(),
+					CreatedBy: uuid.New(),
+					Name:      "name",
+					IsLocked:  true,
+					IsActive:  false,
+					CreatedAt: now,
+					UpdatedAt: now,
+					Template: &model.SDTemplate{
+						Name:                   "ok",
+						IndicationThreshold:    10,
+						PositiveIndiationText:  "ok",
+						NegativeIndicationText: "ok jg",
+						SubGroupDetails: []model.SDTemplateSubGroupDetail{
+							{
+								Name:              "okelah",
+								QuestionCount:     10,
+								AnswerOptionCount: 3,
+							},
+							{
+								Name:              "okeh juga",
+								QuestionCount:     10,
+								AnswerOptionCount: 5,
+							},
+						},
+					},
+				}
+
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id, false).Times(1).Return(tem, nil)
+				mockSDTemplateRepo.EXPECT().Update(ctx, gomock.Any(), nil).Return(nil)
+
+				res, cerr := uc.ChangeSDTemplateActiveStatus(ctx, id, true)
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res.ID, tem.ToRESTResponse().ID)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
