@@ -52,7 +52,7 @@ func (csdti *SDTemplate) CountMinimumPoint() int {
 
 // FullValidation will validate the SD Template to ensure all rules are satisfied. Suitable to be used to activate the SD Template
 func (csdti *SDTemplate) FullValidation() error {
-	if err := validator.Struct(csdti); err != nil {
+	if err := csdti.PartialValidation(); err != nil {
 		return err
 	}
 
@@ -206,6 +206,7 @@ type SDTemplateUsecase interface {
 	Update(ctx context.Context, id uuid.UUID, input *SDTemplate) (*GeneratedSDTemplate, *common.Error)
 	Delete(ctx context.Context, id uuid.UUID) (*GeneratedSDTemplate, *common.Error)
 	UndoDelete(ctx context.Context, id uuid.UUID) (*GeneratedSDTemplate, *common.Error)
+	ChangeSDTemplateActiveStatus(ctx context.Context, id uuid.UUID, isActive bool) (*GeneratedSDTemplate, *common.Error)
 }
 
 // SDTemplateRepository speech delay test template repository
