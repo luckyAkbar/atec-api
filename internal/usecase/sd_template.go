@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -283,4 +284,78 @@ func (uc *sdtUc) UndoDelete(ctx context.Context, id uuid.UUID) (*model.Generated
 	}
 
 	return res.ToRESTResponse(), nilErr
+}
+
+func (uc *sdtUc) ChangeSDTemplateActiveStatus(ctx context.Context, id uuid.UUID, isActive bool) (*model.GeneratedSDTemplate, *common.Error) {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func":     "sdtUc.ChangeSDTemplateActiveStatus",
+		"id":       id.String(),
+		"isActive": isActive,
+	})
+
+	template, err := uc.sdtRepo.FindByID(ctx, id, false)
+	switch err {
+	default:
+		logger.WithError(err).Error("failed to find speech delay template")
+		return nil, &common.Error{
+			Message: "failed to find speech delay template",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	case repository.ErrNotFound:
+		return nil, &common.Error{
+			Message: "speech delay template not found",
+			Cause:   err,
+			Code:    http.StatusNotFound,
+			Type:    ErrResourceNotFound,
+		}
+	case nil:
+		break
+	}
+
+	// early return if already active/inactive
+	if template.IsActive == isActive {
+		return template.ToRESTResponse(), nilErr
+	}
+
+	// when deactivating, no need to validate the template, can be updated immediatly
+	if !isActive {
+		template.IsActive = false
+		template.UpdatedAt = time.Now().UTC()
+		if err := uc.sdtRepo.Update(ctx, template, nil); err != nil {
+			logger.WithError(err).Error("failed to update speech delay template")
+			return nil, &common.Error{
+				Message: "failed to update speech delay template",
+				Cause:   err,
+				Code:    http.StatusInternalServerError,
+				Type:    ErrInternal,
+			}
+		}
+
+		return template.ToRESTResponse(), nilErr
+	}
+
+	if err := template.Template.FullValidation(); err != nil {
+		return nil, &common.Error{
+			Message: fmt.Sprintf("speech delay template can't be activated because: %s", err.Error()),
+			Cause:   err,
+			Code:    http.StatusForbidden,
+			Type:    ErrSDTemplateCantBeActivated,
+		}
+	}
+
+	template.IsActive = true
+	template.UpdatedAt = time.Now().UTC()
+	if err != uc.sdtRepo.Update(ctx, template, nil) {
+		logger.WithError(err).Error("failed to update speech delay template")
+		return nil, &common.Error{
+			Message: "failed to update speech delay template",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	}
+
+	return template.ToRESTResponse(), nilErr
 }
