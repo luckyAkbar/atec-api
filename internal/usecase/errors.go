@@ -63,6 +63,9 @@ var (
 
 	// ErrSDTemplateAlreadyLocked is returned when sd template is already locked
 	ErrSDTemplateAlreadyLocked = errors.New("003002")
+
+	// ErrSDTemplateCantBeActivated will be returned when trying to activate an invalid SD template
+	ErrSDTemplateCantBeActivated = errors.New("003003")
 )
 
 var nilErr = &common.Error{

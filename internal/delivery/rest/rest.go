@@ -43,4 +43,5 @@ func (s *service) initRoutes() {
 	s.rootGroup.GET("/sdt/templates/", s.handleSearchSDTemplate(), s.authMiddleware(true))
 	s.rootGroup.DELETE("/sdt/templates/:id/", s.handleDeleteSDTemplate(), s.authMiddleware(true))
 	s.rootGroup.PATCH("/sdt/templates/:id/", s.handleUndoDeleteSDTemplate(), s.authMiddleware(true))
+	s.rootGroup.PATCH("/sdt/templates/:id/activation-status/", s.handleChangeSDTemplateActivationStatus(), s.authMiddleware(true))
 }

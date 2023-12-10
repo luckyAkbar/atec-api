@@ -26,6 +26,15 @@ run: check-modd-exists
 worker: check-modd-exists
 	@modd -f ./.modd/worker.modd.conf
 
+count-lines-all:
+	find . -name '*.go' | xargs wc -l
+
+count-lines-no-generated:
+	find . -name '*.go' -not -name 'mock_*.go' | xargs wc -l
+
+count-lines-no-generated-no-test:
+	find . -name '*.go' -not -name 'mock_*.go' -not -name '*_test.go' | xargs wc -l
+
 lint: check-cognitive-complexity
 	golangci-lint run --print-issued-lines=false --exclude-use-default=false --enable=revive --enable=goimports  --enable=unconvert --enable=unparam --concurrency=2
 
