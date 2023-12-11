@@ -109,7 +109,7 @@ type GeneratedSDTemplate struct {
 }
 
 // SpeechDelayTemplate will represent speech delay only test templates on db table.
-// Because the actual table's column datatype for tempalte is JSONB, every ATEC test type must
+// Because the actual table's column datatype for template is JSONB, every ATEC test type must
 // define a specific struct and make sure the Template is support JSONB implementation.
 // Also make sure to customize function TableName to return "test_templates".
 type SpeechDelayTemplate struct {
