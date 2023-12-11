@@ -64,3 +64,24 @@ func (s *service) handleFindSDPackageByID() echo.HandlerFunc {
 		}
 	}
 }
+
+func (s *service) handleSearchSDPackage() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		input := &model.SearchSDPackageInput{}
+		if err := c.Bind(input); err != nil {
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil)
+		}
+
+		resp, custerr := s.sdpackageUsecase.Search(c.Request().Context(), input)
+		if custerr.Type != nil {
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, custerr.GenerateStdlibHTTPResponse(nil), nil)
+		}
+
+		return s.apiResponseGenerator.GenerateEchoAPIResponse(c, &stdhttp.StandardResponse{
+			Success: true,
+			Message: "success",
+			Status:  http.StatusOK,
+			Data:    resp,
+		}, nil)
+	}
+}
