@@ -126,9 +126,11 @@ func (sdp *SpeechDelayPackage) ToRESTResponse() *GeneratedSDPackage {
 // SDPackageUsecase interface for SD package usecase
 type SDPackageUsecase interface {
 	Create(ctx context.Context, input *SDPackage) (*GeneratedSDPackage, *common.Error)
+	FindByID(ctx context.Context, id uuid.UUID) (*GeneratedSDPackage, *common.Error)
 }
 
 // SDPackageRepository interface for SD package repository
 type SDPackageRepository interface {
 	Create(ctx context.Context, input *SpeechDelayPackage) error
+	FindByID(ctx context.Context, id uuid.UUID, includeDeleted bool) (*SpeechDelayPackage, error)
 }

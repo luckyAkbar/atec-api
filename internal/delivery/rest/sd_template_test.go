@@ -288,7 +288,7 @@ func TestRest_handleFindSDTemplateByID(t *testing.T) {
 					apiResponseGenerator: mockAPIRespGen,
 					sdtemplateUsecase:    mockSDTemplateUc,
 				}
-				req := httptest.NewRequest(http.MethodPatch, "/", nil)
+				req := httptest.NewRequest(http.MethodGet, "/", nil)
 				req.Header.Set("Content-Type", "application/json")
 
 				rec := httptest.NewRecorder()
@@ -313,7 +313,7 @@ func TestRest_handleFindSDTemplateByID(t *testing.T) {
 					apiResponseGenerator: mockAPIRespGen,
 					sdtemplateUsecase:    mockSDTemplateUc,
 				}
-				req := httptest.NewRequest(http.MethodPatch, "/", nil)
+				req := httptest.NewRequest(http.MethodGet, "/", nil)
 				req.Header.Set("Content-Type", "application/json")
 
 				rec := httptest.NewRecorder()
@@ -338,7 +338,7 @@ func TestRest_handleFindSDTemplateByID(t *testing.T) {
 					apiResponseGenerator: mockAPIRespGen,
 					sdtemplateUsecase:    mockSDTemplateUc,
 				}
-				req := httptest.NewRequest(http.MethodPatch, "/", nil)
+				req := httptest.NewRequest(http.MethodGet, "/", nil)
 				req.Header.Set("Content-Type", "application/json")
 
 				id := uuid.New()
@@ -371,7 +371,7 @@ func TestRest_handleFindSDTemplateByID(t *testing.T) {
 					apiResponseGenerator: mockAPIRespGen,
 					sdtemplateUsecase:    mockSDTemplateUc,
 				}
-				req := httptest.NewRequest(http.MethodPatch, "/", nil)
+				req := httptest.NewRequest(http.MethodGet, "/", nil)
 				req.Header.Set("Content-Type", "application/json")
 
 				id := uuid.New()
@@ -404,7 +404,7 @@ func TestRest_handleFindSDTemplateByID(t *testing.T) {
 					apiResponseGenerator: mockAPIRespGen,
 					sdtemplateUsecase:    mockSDTemplateUc,
 				}
-				req := httptest.NewRequest(http.MethodPatch, "/", nil)
+				req := httptest.NewRequest(http.MethodGet, "/", nil)
 				req.Header.Set("Content-Type", "application/json")
 
 				id := uuid.New()

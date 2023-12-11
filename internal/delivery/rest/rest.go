@@ -48,4 +48,5 @@ func (s *service) initRoutes() {
 	s.rootGroup.PATCH("/sdt/templates/:id/activation-status/", s.handleChangeSDTemplateActivationStatus(), s.authMiddleware(true))
 
 	s.rootGroup.POST("/sdt/packages/", s.handleCreateSDPackage(), s.authMiddleware(true))
+	s.rootGroup.GET("/sdt/packages/:id/", s.handleFindSDPackageByID(), s.authMiddleware(true))
 }

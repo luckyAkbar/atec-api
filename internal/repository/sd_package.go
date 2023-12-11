@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/luckyAkbar/atec-api/internal/model"
 	"github.com/sirupsen/logrus"
 	"github.com/sweet-go/stdlib/helper"
@@ -31,4 +32,28 @@ func (r *sdpRepo) Create(ctx context.Context, input *model.SpeechDelayPackage) e
 	}
 
 	return nil
+}
+
+func (r *sdpRepo) FindByID(ctx context.Context, id uuid.UUID, includeDeleted bool) (*model.SpeechDelayPackage, error) {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func": "sdpRepo.FindByID",
+		"id":   id.String(),
+	})
+
+	query := r.db.WithContext(ctx)
+	if includeDeleted {
+		query = query.Unscoped()
+	}
+
+	sdp := &model.SpeechDelayPackage{}
+	err := query.Take(sdp, "id = ?", id).Error
+	switch err {
+	default:
+		logger.WithError(err).Error("failed to find sd package")
+		return nil, err
+	case gorm.ErrRecordNotFound:
+		return nil, ErrNotFound
+	case nil:
+		return sdp, nil
+	}
 }

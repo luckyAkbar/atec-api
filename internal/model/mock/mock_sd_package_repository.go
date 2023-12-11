@@ -9,6 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	uuid "github.com/google/uuid"
 	model "github.com/luckyAkbar/atec-api/internal/model"
 )
 
@@ -47,4 +48,19 @@ func (m *MockSDPackageRepository) Create(arg0 context.Context, arg1 *model.Speec
 func (mr *MockSDPackageRepositoryMockRecorder) Create(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockSDPackageRepository)(nil).Create), arg0, arg1)
+}
+
+// FindByID mocks base method.
+func (m *MockSDPackageRepository) FindByID(arg0 context.Context, arg1 uuid.UUID, arg2 bool) (*model.SpeechDelayPackage, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindByID", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*model.SpeechDelayPackage)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindByID indicates an expected call of FindByID.
+func (mr *MockSDPackageRepositoryMockRecorder) FindByID(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByID", reflect.TypeOf((*MockSDPackageRepository)(nil).FindByID), arg0, arg1, arg2)
 }
