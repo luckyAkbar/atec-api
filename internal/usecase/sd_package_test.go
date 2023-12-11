@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"net/http"
 	"testing"
 	"time"
 
@@ -245,6 +246,77 @@ func TestSDPackageUsecase_Create(t *testing.T) {
 				res, cerr := uc.Create(ctx, validInput)
 				assert.NoError(t, cerr.Type)
 				assert.Equal(t, res.TemplateID, activetem.ID)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
+
+func TestSDPackageUsecase_FindByID(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	ctx := context.Background()
+
+	mockSDPackageRepo := mock.NewMockSDPackageRepository(kit.Ctrl)
+	mockSDTemplateRepo := mock.NewMockSDTemplateRepository(kit.Ctrl)
+	uc := NewSDPackageUsecase(mockSDPackageRepo, mockSDTemplateRepo)
+
+	id := uuid.New()
+	now := time.Now()
+
+	pack := &model.SpeechDelayPackage{
+		ID:         id,
+		TemplateID: uuid.New(),
+		Name:       "name",
+		CreatedBy:  uuid.New(),
+		Package:    &model.SDPackage{},
+		IsActive:   false,
+		IsLocked:   false,
+		CreatedAt:  now,
+		UpdatedAt:  now,
+	}
+
+	tests := []common.TestStructure{
+		{
+			Name: "ok found",
+			MockFn: func() {
+				mockSDPackageRepo.EXPECT().FindByID(ctx, id, true).Times(1).Return(pack, nil)
+			},
+			Run: func() {
+				res, cerr := uc.FindByID(ctx, id)
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res.ID, pack.ToRESTResponse().ID)
+			},
+		},
+		{
+			Name: "not found",
+			MockFn: func() {
+				mockSDPackageRepo.EXPECT().FindByID(ctx, id, true).Times(1).Return(nil, repository.ErrNotFound)
+			},
+			Run: func() {
+				_, cerr := uc.FindByID(ctx, id)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrResourceNotFound)
+				assert.Equal(t, cerr.Code, http.StatusNotFound)
+			},
+		},
+		{
+			Name: "db err",
+			MockFn: func() {
+				mockSDPackageRepo.EXPECT().FindByID(ctx, id, true).Times(1).Return(nil, errors.New("err db"))
+			},
+			Run: func() {
+				_, cerr := uc.FindByID(ctx, id)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrInternal)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
 			},
 		},
 	}
