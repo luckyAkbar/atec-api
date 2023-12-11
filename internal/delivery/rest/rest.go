@@ -49,4 +49,5 @@ func (s *service) initRoutes() {
 
 	s.rootGroup.POST("/sdt/packages/", s.handleCreateSDPackage(), s.authMiddleware(true))
 	s.rootGroup.GET("/sdt/packages/:id/", s.handleFindSDPackageByID(), s.authMiddleware(true))
+	s.rootGroup.GET("/sdt/packages/", s.handleSearchSDPackage(), s.authMiddleware(true))
 }

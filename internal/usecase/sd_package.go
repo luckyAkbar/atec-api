@@ -126,3 +126,31 @@ func (uc *sdpUc) FindByID(ctx context.Context, id uuid.UUID) (*model.GeneratedSD
 		return pack.ToRESTResponse(), nilErr
 	}
 }
+
+func (uc *sdpUc) Search(ctx context.Context, input *model.SearchSDPackageInput) (*model.SearchPackageOutput, *common.Error) {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func":  "sdpuc.Search",
+		"input": helper.Dump(input),
+	})
+
+	res, err := uc.sdpRepo.Search(ctx, input)
+	if err != nil {
+		logger.WithError(err).Error("failed to find sd package")
+		return nil, &common.Error{
+			Message: "failed to find sd package",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	}
+
+	response := []*model.GeneratedSDPackage{}
+	for _, v := range res {
+		response = append(response, v.ToRESTResponse())
+	}
+
+	return &model.SearchPackageOutput{
+		Packages: response,
+		Count:    len(res),
+	}, nilErr
+}

@@ -57,3 +57,29 @@ func (r *sdpRepo) FindByID(ctx context.Context, id uuid.UUID, includeDeleted boo
 		return sdp, nil
 	}
 }
+
+func (r *sdpRepo) Search(ctx context.Context, input *model.SearchSDPackageInput) ([]*model.SpeechDelayPackage, error) {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func":  "sdpRepo.Search",
+		"input": helper.Dump(input),
+	})
+
+	query := r.db.WithContext(ctx)
+	if input.IncludeDeleted {
+		query = query.Unscoped()
+	}
+
+	where, conds := input.ToWhereQuery()
+	for i := 0; i < len(where); i++ {
+		query = query.Where(where[i], conds[i])
+	}
+
+	var packs []*model.SpeechDelayPackage
+	err := query.Limit(input.Limit).Offset(input.Offset).Order("created_at desc").Find(&packs).Error
+	if err != nil {
+		logger.WithError(err).Error("failed to search sd template from db")
+		return []*model.SpeechDelayPackage{}, err
+	}
+
+	return packs, nil
+}

@@ -64,3 +64,18 @@ func (mr *MockSDPackageRepositoryMockRecorder) FindByID(arg0, arg1, arg2 interfa
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByID", reflect.TypeOf((*MockSDPackageRepository)(nil).FindByID), arg0, arg1, arg2)
 }
+
+// Search mocks base method.
+func (m *MockSDPackageRepository) Search(arg0 context.Context, arg1 *model.SearchSDPackageInput) ([]*model.SpeechDelayPackage, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Search", arg0, arg1)
+	ret0, _ := ret[0].([]*model.SpeechDelayPackage)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Search indicates an expected call of Search.
+func (mr *MockSDPackageRepositoryMockRecorder) Search(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Search", reflect.TypeOf((*MockSDPackageRepository)(nil).Search), arg0, arg1)
+}

@@ -123,14 +123,74 @@ func (sdp *SpeechDelayPackage) ToRESTResponse() *GeneratedSDPackage {
 	}
 }
 
+type SearchSDPackageInput struct {
+	TemplateID     uuid.UUID `query:"templateID"`
+	CreatedBy      uuid.UUID `query:"createdBy"`
+	CreatedAfter   time.Time `query:"createdAfter"`
+	IsActive       *bool     `query:"isActive"`
+	IsLocked       *bool     `query:"isLocked"`
+	IncludeDeleted bool      `query:"includeDeleted"`
+	Limit          int       `query:"limit"`
+	Offset         int       `query:"offset"`
+}
+
+// ToWhereQuery convert SearchSDPackageInput to where query and conditions. If limit is unset / set over 100, will be set to 100.
+// If offset is unset / set under 0, will be set to 0.
+func (sdpi *SearchSDPackageInput) ToWhereQuery() ([]interface{}, []interface{}) {
+	var whereQuery []interface{}
+	var conds []interface{}
+
+	if sdpi.Limit < 0 || sdpi.Limit > 100 {
+		sdpi.Limit = 100
+	}
+
+	if sdpi.Offset < 0 {
+		sdpi.Offset = 0
+	}
+
+	if sdpi.TemplateID != uuid.Nil {
+		whereQuery = append(whereQuery, "template_id = ?")
+		conds = append(conds, sdpi.TemplateID)
+	}
+
+	if sdpi.CreatedBy != uuid.Nil {
+		whereQuery = append(whereQuery, "created_by = ?")
+		conds = append(conds, sdpi.CreatedBy)
+	}
+
+	if !reflect.ValueOf(sdpi.CreatedAfter).IsZero() {
+		whereQuery = append(whereQuery, "created_at > ?")
+		conds = append(conds, sdpi.CreatedAfter.UTC())
+	}
+
+	if sdpi.IsActive != nil {
+		whereQuery = append(whereQuery, "is_active = ?")
+		conds = append(conds, *sdpi.IsActive)
+	}
+
+	if sdpi.IsLocked != nil {
+		whereQuery = append(whereQuery, "is_locked = ?")
+		conds = append(conds, *sdpi.IsLocked)
+	}
+
+	return whereQuery, conds
+}
+
+type SearchPackageOutput struct {
+	Packages []*GeneratedSDPackage `json:"packages"`
+	Count    int                   `json:"count"`
+}
+
 // SDPackageUsecase interface for SD package usecase
 type SDPackageUsecase interface {
 	Create(ctx context.Context, input *SDPackage) (*GeneratedSDPackage, *common.Error)
 	FindByID(ctx context.Context, id uuid.UUID) (*GeneratedSDPackage, *common.Error)
+	Search(ctx context.Context, input *SearchSDPackageInput) (*SearchPackageOutput, *common.Error)
 }
 
 // SDPackageRepository interface for SD package repository
 type SDPackageRepository interface {
 	Create(ctx context.Context, input *SpeechDelayPackage) error
 	FindByID(ctx context.Context, id uuid.UUID, includeDeleted bool) (*SpeechDelayPackage, error)
+	Search(ctx context.Context, input *SearchSDPackageInput) ([]*SpeechDelayPackage, error)
 }
