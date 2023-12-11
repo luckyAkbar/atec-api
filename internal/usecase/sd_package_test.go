@@ -328,3 +328,81 @@ func TestSDPackageUsecase_FindByID(t *testing.T) {
 		})
 	}
 }
+
+func TestSDPackageUsecase_Search(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	ctx := context.Background()
+
+	mockSDPackageRepo := mock.NewMockSDPackageRepository(kit.Ctrl)
+	mockSDTemplateRepo := mock.NewMockSDTemplateRepository(kit.Ctrl)
+	uc := NewSDPackageUsecase(mockSDPackageRepo, mockSDTemplateRepo)
+
+	trueVal := true
+	falseVal := false
+
+	input := &model.SearchSDPackageInput{
+		CreatedBy:      uuid.New(),
+		CreatedAfter:   time.Now().Add(time.Hour * -10).UTC(),
+		IsActive:       &trueVal,
+		IsLocked:       &falseVal,
+		IncludeDeleted: false,
+		Limit:          10,
+		Offset:         0,
+		TemplateID:     uuid.New(),
+	}
+
+	tests := []common.TestStructure{
+		{
+			Name: "repo err",
+			MockFn: func() {
+				mockSDPackageRepo.EXPECT().Search(ctx, input).Times(1).Return(nil, errors.New("err db"))
+			},
+			Run: func() {
+				_, cerr := uc.Search(ctx, input)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrInternal)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
+			},
+		},
+		{
+			Name: "repo return 0 array",
+			MockFn: func() {
+				mockSDPackageRepo.EXPECT().Search(ctx, input).Times(1).Return([]*model.SpeechDelayPackage{}, nil)
+			},
+			Run: func() {
+				res, cerr := uc.Search(ctx, input)
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res.Count, 0)
+				assert.Equal(t, len(res.Packages), 0)
+			},
+		},
+		{
+			Name: "ok",
+			MockFn: func() {
+				mockSDPackageRepo.EXPECT().Search(ctx, input).Times(1).Return([]*model.SpeechDelayPackage{
+					{
+						ID: uuid.New(),
+					},
+					{
+						ID: uuid.New(),
+					},
+				}, nil)
+			},
+			Run: func() {
+				res, cerr := uc.Search(ctx, input)
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res.Count, 2)
+				assert.Equal(t, len(res.Packages), 2)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}

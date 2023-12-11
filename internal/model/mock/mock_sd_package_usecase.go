@@ -66,3 +66,18 @@ func (mr *MockSDPackageUsecaseMockRecorder) FindByID(arg0, arg1 interface{}) *go
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByID", reflect.TypeOf((*MockSDPackageUsecase)(nil).FindByID), arg0, arg1)
 }
+
+// Search mocks base method.
+func (m *MockSDPackageUsecase) Search(arg0 context.Context, arg1 *model.SearchSDPackageInput) (*model.SearchPackageOutput, *common.Error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Search", arg0, arg1)
+	ret0, _ := ret[0].(*model.SearchPackageOutput)
+	ret1, _ := ret[1].(*common.Error)
+	return ret0, ret1
+}
+
+// Search indicates an expected call of Search.
+func (mr *MockSDPackageUsecaseMockRecorder) Search(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Search", reflect.TypeOf((*MockSDPackageUsecase)(nil).Search), arg0, arg1)
+}

@@ -498,3 +498,122 @@ func TestRest_handleFindSDPackageByID(t *testing.T) {
 		})
 	}
 }
+
+func TestRest_handleSearchSDPackage(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockAPIRespGen := httpMock.NewMockAPIResponseGenerator(ctrl)
+	mockSDPackageUc := mock.NewMockSDPackageUsecase(ctrl)
+
+	tests := []common.TestStructure{
+		{
+			Name: "ok",
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					sdpackageUsecase:     mockSDPackageUc,
+				}
+				req := httptest.NewRequest(http.MethodGet, "/std/templates/", nil)
+				req.Header.Set("Content-Type", "application/json")
+
+				id := uuid.New()
+				input := &model.SearchSDPackageInput{
+					CreatedBy: id,
+					Limit:     10,
+					Offset:    100,
+				}
+
+				resp := &model.SearchPackageOutput{
+					Packages: []*model.GeneratedSDPackage{},
+					Count:    10,
+				}
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+				ectx.QueryParams().Add("createdBy", id.String())
+				ectx.QueryParams().Add("limit", "10")
+				ectx.QueryParams().Add("offset", "100")
+
+				mockSDPackageUc.EXPECT().Search(ectx.Request().Context(), input).Times(1).Return(resp, &common.Error{Type: nil})
+
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, &stdhttp.StandardResponse{
+					Success: true,
+					Message: "success",
+					Status:  http.StatusOK,
+					Data:    resp,
+				}, nil)
+
+				err := restService.handleSearchSDPackage()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name: "input invalid",
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					sdpackageUsecase:     mockSDPackageUc,
+				}
+				req := httptest.NewRequest(http.MethodGet, "/std/templates/", nil)
+				req.Header.Set("Content-Type", "application/json")
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+
+				ectx.QueryParams().Add("createdBy", "hamdeh.")
+
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil)
+
+				err := restService.handleSearchSDPackage()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name: "uc err",
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					sdpackageUsecase:     mockSDPackageUc,
+				}
+				req := httptest.NewRequest(http.MethodGet, "/std/templates/", nil)
+				req.Header.Set("Content-Type", "application/json")
+
+				id := uuid.New()
+				input := &model.SearchSDPackageInput{
+					CreatedBy: id,
+					Limit:     10,
+					Offset:    100,
+				}
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+				ectx.QueryParams().Add("createdBy", id.String())
+				ectx.QueryParams().Add("limit", "10")
+				ectx.QueryParams().Add("offset", "100")
+
+				cerr := &common.Error{Type: usecase.ErrInternal}
+
+				mockSDPackageUc.EXPECT().Search(ectx.Request().Context(), input).Times(1).Return(nil, cerr)
+
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, cerr.GenerateStdlibHTTPResponse(nil), nil)
+
+				err := restService.handleSearchSDPackage()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.Run()
+		})
+	}
+}
