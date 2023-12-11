@@ -2,6 +2,7 @@ package model
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/luckyAkbar/atec-api/internal/common"
@@ -419,6 +420,87 @@ func TestModel_SDPackage_PartialValidation(t *testing.T) {
 					},
 				}
 				assert.NoError(t, in.PartialValidation())
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.Run()
+		})
+	}
+}
+
+func TestSDTemplate_SearchSDPackageInput_ToWhereQuery(t *testing.T) {
+	trueVal := true
+	falseVal := false
+	tests := []common.TestStructure{
+		{
+			Name: "1",
+			Run: func() {
+				in := &SearchSDPackageInput{
+					CreatedBy: uuid.New(),
+					Limit:     -10,
+					Offset:    -10009,
+				}
+				where, conds := in.ToWhereQuery()
+				assert.Equal(t, len(where), len(conds))
+				assert.Equal(t, in.Limit, 100)
+				assert.Equal(t, in.Offset, 0)
+			},
+		},
+		{
+			Name: "2",
+			Run: func() {
+				in := &SearchSDPackageInput{
+					CreatedBy:    uuid.New(),
+					CreatedAfter: time.Now().Add(time.Hour * -10).UTC(),
+					Limit:        10,
+					Offset:       -10009,
+				}
+				where, conds := in.ToWhereQuery()
+				assert.Equal(t, len(where), len(conds))
+				assert.Equal(t, in.Limit, 10)
+				assert.Equal(t, in.Offset, 0)
+			},
+		},
+		{
+			Name: "3",
+			Run: func() {
+				in := &SearchSDPackageInput{
+					CreatedBy:      uuid.New(),
+					CreatedAfter:   time.Now().Add(time.Hour * -10).UTC(),
+					Limit:          10,
+					IsActive:       &trueVal,
+					IsLocked:       &falseVal,
+					IncludeDeleted: false,
+					Offset:         10009,
+				}
+				where, conds := in.ToWhereQuery()
+				assert.Equal(t, len(where), len(conds))
+				assert.Equal(t, in.Limit, 10)
+				assert.Equal(t, in.Offset, 10009)
+
+			},
+		},
+		{
+			Name: "3",
+			Run: func() {
+				in := &SearchSDPackageInput{
+					CreatedBy:      uuid.New(),
+					CreatedAfter:   time.Now().Add(time.Hour * -10).UTC(),
+					Limit:          10,
+					IsActive:       &trueVal,
+					IsLocked:       &falseVal,
+					IncludeDeleted: false,
+					Offset:         10009,
+					TemplateID:     uuid.New(),
+				}
+				where, conds := in.ToWhereQuery()
+				assert.Equal(t, len(where), len(conds))
+				assert.Equal(t, in.Limit, 10)
+				assert.Equal(t, in.Offset, 10009)
+
 			},
 		},
 	}
