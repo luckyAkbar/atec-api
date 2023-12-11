@@ -66,6 +66,12 @@ var (
 
 	// ErrSDTemplateCantBeActivated will be returned when trying to activate an invalid SD template
 	ErrSDTemplateCantBeActivated = errors.New("003003")
+
+	// ErrSDTemplateIsDeactivated will be returned when trying to create package from inactive template
+	ErrSDTemplateIsDeactivated = errors.New("003004")
+
+	// ErrSDPackageInputInvalid is returned when input is invalid
+	ErrSDPackageInputInvalid = errors.New("004001")
 )
 
 var nilErr = &common.Error{
