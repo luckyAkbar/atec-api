@@ -78,7 +78,7 @@ func (r *sdpRepo) Search(ctx context.Context, input *model.SearchSDPackageInput)
 	var packs []*model.SpeechDelayPackage
 	err := query.Limit(input.Limit).Offset(input.Offset).Order("created_at desc").Find(&packs).Error
 	if err != nil {
-		logger.WithError(err).Error("failed to search sd template from db")
+		logger.WithError(err).Error("failed to search sd package from db")
 		return []*model.SpeechDelayPackage{}, err
 	}
 
@@ -113,7 +113,7 @@ func (r *sdpRepo) Delete(ctx context.Context, id uuid.UUID) (*model.SpeechDelayP
 	deleted := &model.SpeechDelayPackage{}
 	err := r.db.WithContext(ctx).Clauses(clause.Returning{}).Delete(deleted, "id = ?", id).Error
 	if err != nil {
-		logger.WithError(err).Error("failed to delete speech delay template")
+		logger.WithError(err).Error("failed to delete speech delay package")
 		return nil, err
 	}
 
