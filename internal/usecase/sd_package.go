@@ -250,3 +250,52 @@ func (uc *sdpUc) Update(ctx context.Context, id uuid.UUID, input *model.SDPackag
 
 	return pack.ToRESTResponse(), nilErr
 }
+
+func (uc *sdpUc) Delete(ctx context.Context, id uuid.UUID) (*model.GeneratedSDPackage, *common.Error) {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func": "sdpUc.Delete",
+		"id":   id.String(),
+	})
+
+	pack, err := uc.sdpRepo.FindByID(ctx, id, false)
+	switch err {
+	default:
+		logger.WithError(err).Error("failed to find speech delay package")
+		return nil, &common.Error{
+			Message: "failed to find speech delay package",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	case repository.ErrNotFound:
+		return nil, &common.Error{
+			Message: "speech delay package not found",
+			Cause:   err,
+			Code:    http.StatusNotFound,
+			Type:    ErrResourceNotFound,
+		}
+	case nil:
+		break
+	}
+
+	if pack.IsLocked {
+		return nil, &common.Error{
+			Message: "speech delay package is already locked",
+			Cause:   errors.New("speech delay package is already locked"),
+			Code:    http.StatusForbidden,
+			Type:    ErrSDPackageAlreadyLocked,
+		}
+	}
+
+	deleted, err := uc.sdpRepo.Delete(ctx, pack.ID)
+	if err != nil {
+		return nil, &common.Error{
+			Message: "failed to delete speech delay package",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	}
+
+	return deleted.ToRESTResponse(), nilErr
+}

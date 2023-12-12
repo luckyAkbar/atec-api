@@ -105,7 +105,33 @@ func (s *service) handleUpdateSDPackage() echo.HandlerFunc {
 		default:
 			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, custerr.GenerateStdlibHTTPResponse(nil), nil)
 		case usecase.ErrInternal:
-			logrus.WithContext(c.Request().Context()).WithError(custerr.Cause).Error("failed to handle update sd template request")
+			logrus.WithContext(c.Request().Context()).WithError(custerr.Cause).Error("failed to handle update sd package request")
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrInternal.GenerateStdlibHTTPResponse(nil), nil)
+		case nil:
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, &stdhttp.StandardResponse{
+				Success: true,
+				Message: "success",
+				Status:  http.StatusOK,
+				Data:    resp,
+			}, nil)
+		}
+	}
+}
+
+func (s *service) handleDeleteSDPackage() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		input := c.Param("id")
+		packageID, err := uuid.Parse(input)
+		if err != nil {
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil)
+		}
+
+		resp, custerr := s.sdpackageUsecase.Delete(c.Request().Context(), packageID)
+		switch custerr.Type {
+		default:
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, custerr.GenerateStdlibHTTPResponse(nil), nil)
+		case usecase.ErrInternal:
+			logrus.WithContext(c.Request().Context()).WithError(custerr.Cause).Error("failed to handle delete sd package request")
 			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrInternal.GenerateStdlibHTTPResponse(nil), nil)
 		case nil:
 			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, &stdhttp.StandardResponse{

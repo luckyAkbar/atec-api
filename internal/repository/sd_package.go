@@ -8,6 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/sweet-go/stdlib/helper"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type sdpRepo struct {
@@ -101,4 +102,20 @@ func (r *sdpRepo) Update(ctx context.Context, pack *model.SpeechDelayPackage, tx
 	}
 
 	return nil
+}
+
+func (r *sdpRepo) Delete(ctx context.Context, id uuid.UUID) (*model.SpeechDelayPackage, error) {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func":  "sdpRepo.Delete",
+		"input": helper.Dump(id),
+	})
+
+	deleted := &model.SpeechDelayPackage{}
+	err := r.db.WithContext(ctx).Clauses(clause.Returning{}).Delete(deleted, "id = ?", id).Error
+	if err != nil {
+		logger.WithError(err).Error("failed to delete speech delay template")
+		return nil, err
+	}
+
+	return deleted, nil
 }
