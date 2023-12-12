@@ -406,3 +406,263 @@ func TestSDPackageUsecase_Search(t *testing.T) {
 		})
 	}
 }
+
+func TestSDPackageUsecase_Update(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	ctx := context.Background()
+
+	mockSDTemplateRepo := mock.NewMockSDTemplateRepository(kit.Ctrl)
+	mockSDPackageRepo := mock.NewMockSDPackageRepository(kit.Ctrl)
+	uc := NewSDPackageUsecase(mockSDPackageRepo, mockSDTemplateRepo)
+
+	templateID := uuid.New()
+	packageID := uuid.New()
+	now := time.Now().UTC()
+
+	validInput := &model.SDPackage{
+		PackageName: "valid package name",
+		TemplateID:  templateID,
+		SubGroupDetails: []model.SDSubGroupDetail{
+			{
+				Name: "valid name",
+				QuestionAndAnswerLists: []model.SDQuestionAndAnswers{
+					{
+						Question: "valid question?",
+						AnswersAndValue: []model.SDAnswerAndValue{
+							{
+								Text:  "pilihan pertama",
+								Value: 99,
+							},
+							{
+								Text:  "pilihan kedua, tapi value nya sama",
+								Value: 100,
+							},
+						},
+					},
+				},
+			},
+			{
+				Name: "valid name",
+				QuestionAndAnswerLists: []model.SDQuestionAndAnswers{
+					{
+						Question: "valid question?",
+						AnswersAndValue: []model.SDAnswerAndValue{
+							{
+								Text:  "pilihan pertama",
+								Value: 99,
+							},
+							{
+								Text:  "pilihan kedua, tapi value nya sama",
+								Value: 100,
+							},
+						},
+					},
+				},
+			},
+			{
+				Name: "valid name",
+				QuestionAndAnswerLists: []model.SDQuestionAndAnswers{
+					{
+						Question: "valid question?",
+						AnswersAndValue: []model.SDAnswerAndValue{
+							{
+								Text:  "pilihan pertama",
+								Value: 99,
+							},
+							{
+								Text:  "pilihan kedua, tapi value nya sama",
+								Value: 100,
+							},
+						},
+					},
+				},
+			},
+			{
+				Name: "another valid group name",
+				QuestionAndAnswerLists: []model.SDQuestionAndAnswers{
+					{
+						Question: "valid question?",
+						AnswersAndValue: []model.SDAnswerAndValue{
+							{
+								Text:  "pilihan pertama",
+								Value: 99,
+							},
+							{
+								Text:  "pilihan kedua, tapi value nya sama",
+								Value: 100,
+							},
+						},
+					},
+					{
+						Question: "valid question?",
+						AnswersAndValue: []model.SDAnswerAndValue{
+							{
+								Text:  "pilihan pertama",
+								Value: 1001,
+							},
+							{
+								Text:  "pilihan kedua, tapi value nya sama",
+								Value: 100,
+							},
+							{
+								Text:  "pilihan ketiga, tapi ya begitulah",
+								Value: 11,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	pack := &model.SpeechDelayPackage{
+		ID:         packageID,
+		TemplateID: templateID,
+		Name:       "ok",
+		CreatedBy:  uuid.New(),
+		Package:    validInput,
+		IsActive:   false,
+		IsLocked:   false,
+		CreatedAt:  now,
+		UpdatedAt:  now,
+	}
+
+	activeTem := &model.SpeechDelayTemplate{
+		ID:        templateID,
+		CreatedBy: uuid.New(),
+		Name:      "name",
+		IsActive:  true,
+		IsLocked:  false,
+		CreatedAt: now,
+		UpdatedAt: now,
+		Template:  &model.SDTemplate{},
+	}
+
+	tests := []common.TestStructure{
+		{
+			Name: "ok",
+			MockFn: func() {
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, templateID, false).Times(1).Return(activeTem, nil)
+				mockSDPackageRepo.EXPECT().FindByID(ctx, packageID, false).Times(1).Return(pack, nil)
+				mockSDPackageRepo.EXPECT().Update(ctx, gomock.Any(), nil).Times(1).Return(nil)
+			},
+			Run: func() {
+				res, cerr := uc.Update(ctx, packageID, validInput)
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res.TemplateID, templateID)
+			},
+		},
+		{
+			// the full validation testing cases are in model test
+			Name: "invalid input",
+			MockFn: func() {
+			},
+			Run: func() {
+				_, cerr := uc.Update(ctx, packageID, &model.SDPackage{})
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrSDPackageInputInvalid)
+				assert.Equal(t, cerr.Code, http.StatusBadRequest)
+
+			},
+		},
+		{
+			Name: "template not found",
+			MockFn: func() {
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, templateID, false).Times(1).Return(nil, repository.ErrNotFound)
+			},
+			Run: func() {
+				_, cerr := uc.Update(ctx, packageID, validInput)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrResourceNotFound)
+				assert.Equal(t, cerr.Code, http.StatusNotFound)
+			},
+		},
+		{
+			Name: "template repo return error",
+			MockFn: func() {
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, templateID, false).Times(1).Return(nil, errors.New("err db"))
+			},
+			Run: func() {
+				_, cerr := uc.Update(ctx, packageID, validInput)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrInternal)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
+			},
+		},
+		{
+			Name: "inactive template",
+			MockFn: func() {
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, templateID, false).Times(1).Return(&model.SpeechDelayTemplate{IsActive: false}, nil)
+			},
+			Run: func() {
+				_, cerr := uc.Update(ctx, packageID, validInput)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrSDTemplateIsDeactivated)
+				assert.Equal(t, cerr.Code, http.StatusForbidden)
+
+			},
+		},
+		{
+			Name: "package not found",
+			MockFn: func() {
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, templateID, false).Times(1).Return(activeTem, nil)
+				mockSDPackageRepo.EXPECT().FindByID(ctx, packageID, false).Times(1).Return(nil, repository.ErrNotFound)
+			},
+			Run: func() {
+				_, cerr := uc.Update(ctx, packageID, validInput)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrResourceNotFound)
+				assert.Equal(t, cerr.Code, http.StatusNotFound)
+			},
+		},
+		{
+			Name: "package not found",
+			MockFn: func() {
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, templateID, false).Times(1).Return(activeTem, nil)
+				mockSDPackageRepo.EXPECT().FindByID(ctx, packageID, false).Times(1).Return(nil, errors.New("err db"))
+			},
+			Run: func() {
+				_, cerr := uc.Update(ctx, packageID, validInput)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrInternal)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
+			},
+		},
+		{
+			Name: "package already locked",
+			MockFn: func() {
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, templateID, false).Times(1).Return(activeTem, nil)
+				mockSDPackageRepo.EXPECT().FindByID(ctx, packageID, false).Times(1).Return(&model.SpeechDelayPackage{IsLocked: true}, nil)
+			},
+			Run: func() {
+				_, cerr := uc.Update(ctx, packageID, validInput)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrSDPackageAlreadyLocked)
+				assert.Equal(t, cerr.Code, http.StatusForbidden)
+			},
+		},
+		{
+			Name: "failed to update",
+			MockFn: func() {
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, templateID, false).Times(1).Return(activeTem, nil)
+				mockSDPackageRepo.EXPECT().FindByID(ctx, packageID, false).Times(1).Return(pack, nil)
+				mockSDPackageRepo.EXPECT().Update(ctx, gomock.Any(), nil).Times(1).Return(errors.New("err db"))
+			},
+			Run: func() {
+				_, cerr := uc.Update(ctx, packageID, validInput)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrInternal)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}

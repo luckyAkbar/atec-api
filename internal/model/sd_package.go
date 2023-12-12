@@ -123,6 +123,7 @@ func (sdp *SpeechDelayPackage) ToRESTResponse() *GeneratedSDPackage {
 	}
 }
 
+// SearchSDPackageInput input to search sd package
 type SearchSDPackageInput struct {
 	TemplateID     uuid.UUID `query:"templateID"`
 	CreatedBy      uuid.UUID `query:"createdBy"`
@@ -176,6 +177,7 @@ func (sdpi *SearchSDPackageInput) ToWhereQuery() ([]interface{}, []interface{}) 
 	return whereQuery, conds
 }
 
+// SearchPackageOutput output search sd package
 type SearchPackageOutput struct {
 	Packages []*GeneratedSDPackage `json:"packages"`
 	Count    int                   `json:"count"`
@@ -186,6 +188,7 @@ type SDPackageUsecase interface {
 	Create(ctx context.Context, input *SDPackage) (*GeneratedSDPackage, *common.Error)
 	FindByID(ctx context.Context, id uuid.UUID) (*GeneratedSDPackage, *common.Error)
 	Search(ctx context.Context, input *SearchSDPackageInput) (*SearchPackageOutput, *common.Error)
+	Update(ctx context.Context, id uuid.UUID, input *SDPackage) (*GeneratedSDPackage, *common.Error)
 }
 
 // SDPackageRepository interface for SD package repository
@@ -193,4 +196,5 @@ type SDPackageRepository interface {
 	Create(ctx context.Context, input *SpeechDelayPackage) error
 	FindByID(ctx context.Context, id uuid.UUID, includeDeleted bool) (*SpeechDelayPackage, error)
 	Search(ctx context.Context, input *SearchSDPackageInput) ([]*SpeechDelayPackage, error)
+	Update(ctx context.Context, pack *SpeechDelayPackage, tx *gorm.DB) error
 }
