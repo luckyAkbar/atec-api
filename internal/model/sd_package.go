@@ -186,6 +186,7 @@ type SDPackageUsecase interface {
 	Create(ctx context.Context, input *SDPackage) (*GeneratedSDPackage, *common.Error)
 	FindByID(ctx context.Context, id uuid.UUID) (*GeneratedSDPackage, *common.Error)
 	Search(ctx context.Context, input *SearchSDPackageInput) (*SearchPackageOutput, *common.Error)
+	Update(ctx context.Context, id uuid.UUID, input *SDPackage) (*GeneratedSDPackage, *common.Error)
 }
 
 // SDPackageRepository interface for SD package repository
@@ -193,4 +194,5 @@ type SDPackageRepository interface {
 	Create(ctx context.Context, input *SpeechDelayPackage) error
 	FindByID(ctx context.Context, id uuid.UUID, includeDeleted bool) (*SpeechDelayPackage, error)
 	Search(ctx context.Context, input *SearchSDPackageInput) ([]*SpeechDelayPackage, error)
+	Update(ctx context.Context, pack *SpeechDelayPackage, tx *gorm.DB) error
 }

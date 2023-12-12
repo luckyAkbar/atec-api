@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -153,4 +154,99 @@ func (uc *sdpUc) Search(ctx context.Context, input *model.SearchSDPackageInput) 
 		Packages: response,
 		Count:    len(res),
 	}, nilErr
+}
+
+func (uc *sdpUc) Update(ctx context.Context, id uuid.UUID, input *model.SDPackage) (*model.GeneratedSDPackage, *common.Error) {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func":  "sdtUc.Update",
+		"id":    id.String(),
+		"input": helper.Dump(input),
+	})
+
+	if err := input.PartialValidation(); err != nil {
+		return nil, &common.Error{
+			Message: err.Error(),
+			Cause:   err,
+			Code:    http.StatusBadRequest,
+			Type:    ErrSDPackageInputInvalid,
+		}
+	}
+
+	template, err := uc.sdtRepo.FindByID(ctx, input.TemplateID, false)
+	switch err {
+	default:
+		logger.WithError(err).Error("failed to find sd template")
+		return nil, &common.Error{
+			Message: "failed to find speech delay template",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	case repository.ErrNotFound:
+		return nil, &common.Error{
+			Message: "speech delay template not found",
+			Cause:   err,
+			Code:    http.StatusNotFound,
+			Type:    ErrResourceNotFound,
+		}
+	case nil:
+		break
+	}
+
+	if !template.IsActive {
+		return nil, &common.Error{
+			Message: "speech delay template is not active",
+			Cause:   errors.New("speech delay template is not active"),
+			Code:    http.StatusForbidden,
+			Type:    ErrSDTemplateIsDeactivated,
+		}
+
+	}
+
+	pack, err := uc.sdpRepo.FindByID(ctx, id, false)
+	switch err {
+	default:
+		logger.WithError(err).Error("failed to find sd package")
+		return nil, &common.Error{
+			Message: "failed to find speech delay package",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	case repository.ErrNotFound:
+		return nil, &common.Error{
+			Message: "speech delay package not found",
+			Cause:   err,
+			Code:    http.StatusNotFound,
+			Type:    ErrResourceNotFound,
+		}
+	case nil:
+		break
+	}
+
+	if pack.IsLocked {
+		return nil, &common.Error{
+			Message: "speech delay package is already locked",
+			Cause:   errors.New("speech delay package is already locked"),
+			Code:    http.StatusForbidden,
+			Type:    ErrSDPackageAlreadyLocked,
+		}
+	}
+
+	pack.UpdatedAt = time.Now().UTC()
+	pack.Name = input.PackageName
+	pack.TemplateID = input.TemplateID
+	pack.Package = input
+
+	if err := uc.sdpRepo.Update(ctx, pack, nil); err != nil {
+		logger.WithError(err).Error("failed to update speech delay package")
+		return nil, &common.Error{
+			Message: "failed to update speech delay package",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	}
+
+	return pack.ToRESTResponse(), nilErr
 }

@@ -83,3 +83,22 @@ func (r *sdpRepo) Search(ctx context.Context, input *model.SearchSDPackageInput)
 
 	return packs, nil
 }
+
+func (r *sdpRepo) Update(ctx context.Context, pack *model.SpeechDelayPackage, tx *gorm.DB) error {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func":    "sdpRepo.Update",
+		"package": helper.Dump(pack),
+	})
+
+	if tx == nil {
+		tx = r.db
+	}
+
+	err := tx.WithContext(ctx).Save(pack).Error
+	if err != nil {
+		logger.WithError(err).Error("failed to update speech delay package")
+		return err
+	}
+
+	return nil
+}

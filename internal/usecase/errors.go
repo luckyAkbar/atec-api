@@ -72,6 +72,9 @@ var (
 
 	// ErrSDPackageInputInvalid is returned when input is invalid
 	ErrSDPackageInputInvalid = errors.New("004001")
+
+	// ErrSDPackageAlreadyLocked is returned when sd package is already locked
+	ErrSDPackageAlreadyLocked = errors.New("004002")
 )
 
 var nilErr = &common.Error{
