@@ -123,6 +123,7 @@ func (sdp *SpeechDelayPackage) ToRESTResponse() *GeneratedSDPackage {
 	}
 }
 
+// SearchSDPackageInput input to search sd package
 type SearchSDPackageInput struct {
 	TemplateID     uuid.UUID `query:"templateID"`
 	CreatedBy      uuid.UUID `query:"createdBy"`
@@ -176,6 +177,7 @@ func (sdpi *SearchSDPackageInput) ToWhereQuery() ([]interface{}, []interface{}) 
 	return whereQuery, conds
 }
 
+// SearchPackageOutput output search sd package
 type SearchPackageOutput struct {
 	Packages []*GeneratedSDPackage `json:"packages"`
 	Count    int                   `json:"count"`
