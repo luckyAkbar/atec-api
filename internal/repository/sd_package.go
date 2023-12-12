@@ -119,3 +119,20 @@ func (r *sdpRepo) Delete(ctx context.Context, id uuid.UUID) (*model.SpeechDelayP
 
 	return deleted, nil
 }
+
+func (r *sdpRepo) UndoDelete(ctx context.Context, id uuid.UUID) (*model.SpeechDelayPackage, error) {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func":  "sdpRepo.Delete",
+		"input": helper.Dump(id),
+	})
+
+	pack := &model.SpeechDelayPackage{}
+	err := r.db.WithContext(ctx).Model(pack).Unscoped().Clauses(clause.Returning{}).
+		Where("id = ?", id).Update("deleted_at", gorm.DeletedAt{Valid: false}).Error
+	if err != nil {
+		logger.WithError(err).Error("failed to delete speech delay package")
+		return nil, err
+	}
+
+	return pack, nil
+}

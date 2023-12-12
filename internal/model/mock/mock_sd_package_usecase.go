@@ -97,6 +97,21 @@ func (mr *MockSDPackageUsecaseMockRecorder) Search(arg0, arg1 interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Search", reflect.TypeOf((*MockSDPackageUsecase)(nil).Search), arg0, arg1)
 }
 
+// UndoDelete mocks base method.
+func (m *MockSDPackageUsecase) UndoDelete(arg0 context.Context, arg1 uuid.UUID) (*model.GeneratedSDPackage, *common.Error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UndoDelete", arg0, arg1)
+	ret0, _ := ret[0].(*model.GeneratedSDPackage)
+	ret1, _ := ret[1].(*common.Error)
+	return ret0, ret1
+}
+
+// UndoDelete indicates an expected call of UndoDelete.
+func (mr *MockSDPackageUsecaseMockRecorder) UndoDelete(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UndoDelete", reflect.TypeOf((*MockSDPackageUsecase)(nil).UndoDelete), arg0, arg1)
+}
+
 // Update mocks base method.
 func (m *MockSDPackageUsecase) Update(arg0 context.Context, arg1 uuid.UUID, arg2 *model.SDPackage) (*model.GeneratedSDPackage, *common.Error) {
 	m.ctrl.T.Helper()

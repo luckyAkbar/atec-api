@@ -14,6 +14,7 @@ import (
 	"github.com/luckyAkbar/atec-api/internal/model/mock"
 	"github.com/luckyAkbar/atec-api/internal/repository"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
 )
 
 func TestSDPackageUsecase_Create(t *testing.T) {
@@ -758,6 +759,136 @@ func TestSDPackageUsecase_Delete(t *testing.T) {
 			},
 			Run: func() {
 				_, cerr := uc.Delete(ctx, id)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrInternal)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
+
+func TestSDPackageUsecase_UndoDelete(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	ctx := context.Background()
+
+	mockSDPackageRepo := mock.NewMockSDPackageRepository(kit.Ctrl)
+	uc := NewSDPackageUsecase(mockSDPackageRepo, nil)
+
+	id := uuid.New()
+
+	now := time.Now().UTC()
+	pack := &model.SpeechDelayPackage{
+		ID:         id,
+		CreatedBy:  uuid.New(),
+		Name:       "name",
+		IsActive:   false,
+		IsLocked:   false,
+		CreatedAt:  now,
+		UpdatedAt:  now,
+		DeletedAt:  gorm.DeletedAt{Time: time.Now().UTC(), Valid: true},
+		TemplateID: uuid.New(),
+		Package:    &model.SDPackage{},
+	}
+
+	tests := []common.TestStructure{
+		{
+			Name: "ok",
+			MockFn: func() {
+				mockSDPackageRepo.EXPECT().FindByID(ctx, id, true).Times(1).Return(pack, nil)
+				mockSDPackageRepo.EXPECT().UndoDelete(ctx, pack.ID).Times(1).Return(pack, nil)
+			},
+			Run: func() {
+				res, cerr := uc.UndoDelete(ctx, id)
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res, pack.ToRESTResponse())
+			},
+		},
+		{
+			Name: "not found",
+			MockFn: func() {
+				mockSDPackageRepo.EXPECT().FindByID(ctx, id, true).Times(1).Return(nil, repository.ErrNotFound)
+			},
+			Run: func() {
+				_, cerr := uc.UndoDelete(ctx, id)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrResourceNotFound)
+				assert.Equal(t, cerr.Code, http.StatusNotFound)
+			},
+		},
+		{
+			Name: "failed to find the sd package",
+			MockFn: func() {
+				mockSDPackageRepo.EXPECT().FindByID(ctx, id, true).Times(1).Return(nil, errors.New("db err"))
+			},
+			Run: func() {
+				_, cerr := uc.UndoDelete(ctx, id)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrInternal)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
+			},
+		},
+		{
+			Name: "package locked",
+			MockFn: func() {
+				mockSDPackageRepo.EXPECT().FindByID(ctx, id, true).Times(1).Return(&model.SpeechDelayPackage{
+					ID:         uuid.New(),
+					CreatedBy:  uuid.New(),
+					Name:       "name",
+					IsActive:   true,
+					IsLocked:   true,
+					CreatedAt:  now,
+					UpdatedAt:  now,
+					TemplateID: uuid.New(),
+					Package:    &model.SDPackage{},
+				}, nil)
+			},
+			Run: func() {
+				_, cerr := uc.UndoDelete(ctx, id)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrSDPackageAlreadyLocked)
+				assert.Equal(t, cerr.Code, http.StatusForbidden)
+			},
+		},
+		{
+			Name:   "ok - template is not deleted",
+			MockFn: func() {},
+			Run: func() {
+				notDeleted := &model.SpeechDelayPackage{
+					ID:         uuid.New(),
+					CreatedBy:  uuid.New(),
+					Name:       "name",
+					IsActive:   true,
+					IsLocked:   false,
+					CreatedAt:  now,
+					UpdatedAt:  now,
+					DeletedAt:  gorm.DeletedAt{Valid: false},
+					TemplateID: uuid.New(),
+					Package:    &model.SDPackage{},
+				}
+				mockSDPackageRepo.EXPECT().FindByID(ctx, id, true).Times(1).Return(notDeleted, nil)
+
+				res, cerr := uc.UndoDelete(ctx, id)
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res, notDeleted.ToRESTResponse())
+			},
+		},
+		{
+			Name: "failed to delete",
+			MockFn: func() {
+				mockSDPackageRepo.EXPECT().FindByID(ctx, id, true).Times(1).Return(pack, nil)
+				mockSDPackageRepo.EXPECT().UndoDelete(ctx, pack.ID).Times(1).Return(nil, errors.New("db err"))
+			},
+			Run: func() {
+				_, cerr := uc.UndoDelete(ctx, id)
 				assert.Error(t, cerr.Type)
 				assert.Equal(t, cerr.Type, ErrInternal)
 				assert.Equal(t, cerr.Code, http.StatusInternalServerError)

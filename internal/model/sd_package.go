@@ -190,6 +190,7 @@ type SDPackageUsecase interface {
 	Search(ctx context.Context, input *SearchSDPackageInput) (*SearchPackageOutput, *common.Error)
 	Update(ctx context.Context, id uuid.UUID, input *SDPackage) (*GeneratedSDPackage, *common.Error)
 	Delete(ctx context.Context, id uuid.UUID) (*GeneratedSDPackage, *common.Error)
+	UndoDelete(ctx context.Context, id uuid.UUID) (*GeneratedSDPackage, *common.Error)
 }
 
 // SDPackageRepository interface for SD package repository
@@ -199,4 +200,5 @@ type SDPackageRepository interface {
 	Search(ctx context.Context, input *SearchSDPackageInput) ([]*SpeechDelayPackage, error)
 	Update(ctx context.Context, pack *SpeechDelayPackage, tx *gorm.DB) error
 	Delete(ctx context.Context, id uuid.UUID) (*SpeechDelayPackage, error)
+	UndoDelete(ctx context.Context, id uuid.UUID) (*SpeechDelayPackage, error)
 }
