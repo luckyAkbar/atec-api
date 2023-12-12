@@ -96,6 +96,21 @@ func (mr *MockSDPackageRepositoryMockRecorder) Search(arg0, arg1 interface{}) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Search", reflect.TypeOf((*MockSDPackageRepository)(nil).Search), arg0, arg1)
 }
 
+// UndoDelete mocks base method.
+func (m *MockSDPackageRepository) UndoDelete(arg0 context.Context, arg1 uuid.UUID) (*model.SpeechDelayPackage, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UndoDelete", arg0, arg1)
+	ret0, _ := ret[0].(*model.SpeechDelayPackage)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UndoDelete indicates an expected call of UndoDelete.
+func (mr *MockSDPackageRepositoryMockRecorder) UndoDelete(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UndoDelete", reflect.TypeOf((*MockSDPackageRepository)(nil).UndoDelete), arg0, arg1)
+}
+
 // Update mocks base method.
 func (m *MockSDPackageRepository) Update(arg0 context.Context, arg1 *model.SpeechDelayPackage, arg2 *gorm.DB) error {
 	m.ctrl.T.Helper()

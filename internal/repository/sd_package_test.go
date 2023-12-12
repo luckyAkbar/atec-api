@@ -394,3 +394,58 @@ func TestSDPackageRepository_Delete(t *testing.T) {
 		})
 	}
 }
+
+func TestSDPackageRepository_UndoDelete(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	repo := NewSDPackageRepository(kit.DB)
+	ctx := context.Background()
+	mock := kit.DBmock
+
+	p := &model.SpeechDelayPackage{
+		ID:         uuid.New(),
+		CreatedBy:  uuid.New(),
+		Name:       "name",
+		IsActive:   false,
+		IsLocked:   false,
+		CreatedAt:  time.Now().UTC(),
+		UpdatedAt:  time.Now().UTC(),
+		TemplateID: uuid.New(),
+		Package:    &model.SDPackage{},
+	}
+
+	tests := []common.TestStructure{
+		{
+			Name: "ok",
+			MockFn: func() {
+				mock.ExpectBegin()
+				mock.ExpectQuery(`UPDATE "test_packages" SET`).WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), p.ID).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(p.ID))
+				mock.ExpectCommit()
+			},
+			Run: func() {
+				_, err := repo.UndoDelete(ctx, p.ID)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name: "ok",
+			MockFn: func() {
+				mock.ExpectBegin()
+				mock.ExpectQuery(`UPDATE "test_packages" SET`).WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), p.ID).WillReturnError(errors.New("err db"))
+				mock.ExpectCommit()
+			},
+			Run: func() {
+				_, err := repo.UndoDelete(ctx, p.ID)
+				assert.Error(t, err)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
