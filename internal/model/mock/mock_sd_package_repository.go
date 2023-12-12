@@ -11,6 +11,7 @@ import (
 	gomock "github.com/golang/mock/gomock"
 	uuid "github.com/google/uuid"
 	model "github.com/luckyAkbar/atec-api/internal/model"
+	gorm "gorm.io/gorm"
 )
 
 // MockSDPackageRepository is a mock of SDPackageRepository interface.
@@ -78,4 +79,18 @@ func (m *MockSDPackageRepository) Search(arg0 context.Context, arg1 *model.Searc
 func (mr *MockSDPackageRepositoryMockRecorder) Search(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Search", reflect.TypeOf((*MockSDPackageRepository)(nil).Search), arg0, arg1)
+}
+
+// Update mocks base method.
+func (m *MockSDPackageRepository) Update(arg0 context.Context, arg1 *model.SpeechDelayPackage, arg2 *gorm.DB) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Update", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Update indicates an expected call of Update.
+func (mr *MockSDPackageRepositoryMockRecorder) Update(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockSDPackageRepository)(nil).Update), arg0, arg1, arg2)
 }

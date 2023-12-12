@@ -617,3 +617,314 @@ func TestRest_handleSearchSDPackage(t *testing.T) {
 		})
 	}
 }
+
+func TestRest_handleUpdateSDPackage(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockAPIRespGen := httpMock.NewMockAPIResponseGenerator(ctrl)
+	mockSDPackageUc := mock.NewMockSDPackageUsecase(ctrl)
+
+	templateID := uuid.New()
+	validInput := &model.SDPackage{
+		PackageName: "name",
+		TemplateID:  templateID,
+		SubGroupDetails: []model.SDSubGroupDetail{
+			{
+				Name: "okname",
+				QuestionAndAnswerLists: []model.SDQuestionAndAnswers{
+					{
+						Question: "question",
+						AnswersAndValue: []model.SDAnswerAndValue{
+							{
+								Text:  "text",
+								Value: 99,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	tests := []common.TestStructure{
+		{
+			Name:   "ok",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					sdpackageUsecase:     mockSDPackageUc,
+				}
+				req := httptest.NewRequest(http.MethodPut, "/sdt/packages/", strings.NewReader(fmt.Sprintf(`
+					{
+						"request": {
+							"packageName": "name",
+							"templateID": "%s",
+							"subGroupDetails": [
+								{
+									"name": "okname",
+									"questionAndAnswerLists": [
+										{
+											"question": "question",
+											"answerAndValue": [
+												{
+													"text": "text",
+													"value": 99
+												}
+											]
+										}
+									]
+								}
+							]
+						},
+						"signature": ""
+					}
+				`, templateID.String())))
+				req.Header.Set("Content-Type", "application/json")
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+
+				id := uuid.New()
+				ectx.SetParamNames("id")
+				ectx.SetParamValues(id.String())
+
+				res := &model.GeneratedSDPackage{}
+
+				mockSDPackageUc.EXPECT().Update(ectx.Request().Context(), id, validInput).Times(1).Return(res, &common.Error{
+					Type: nil,
+				})
+
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, &stdhttp.StandardResponse{
+					Success: true,
+					Message: "success",
+					Status:  http.StatusOK,
+					Data:    res,
+				}, nil).Times(1).Return(nil)
+
+				err := restService.handleUpdateSDPackage()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name:   "invalid json",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					sdpackageUsecase:     mockSDPackageUc,
+				}
+				req := httptest.NewRequest(http.MethodPut, "/sdt/packages/", strings.NewReader(fmt.Sprintf(`
+					{
+						"request": {
+							"packageName": "name",
+							"templateID": "%s",
+							"subGroupDetails": [
+								{
+									"name": "okname",
+									"questionAndAnswerLists": [
+										{
+											"question": "question",
+											"answerAndValue": [
+												{
+													"text": "text",
+													"value": 99
+												}
+											]
+										}
+									] <- invalid here
+								}
+							]
+						},
+						"signature": ""
+					}
+				`, templateID.String())))
+				req.Header.Set("Content-Type", "application/json")
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+
+				id := uuid.New()
+				ectx.SetParamNames("id")
+				ectx.SetParamValues(id.String())
+
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil).Times(1).Return(nil)
+
+				err := restService.handleUpdateSDPackage()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name:   "invalid uuid",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					sdpackageUsecase:     mockSDPackageUc,
+				}
+				req := httptest.NewRequest(http.MethodPut, "/sdt/packages/", strings.NewReader(fmt.Sprintf(`
+					{
+						"request": {
+							"packageName": "name",
+							"templateID": "%s",
+							"subGroupDetails": [
+								{
+									"name": "okname",
+									"questionAndAnswerLists": [
+										{
+											"question": "question",
+											"answerAndValue": [
+												{
+													"text": "text",
+													"value": 99
+												}
+											]
+										}
+									] <- invalid here
+								}
+							]
+						},
+						"signature": ""
+					}
+				`, templateID.String())))
+				req.Header.Set("Content-Type", "application/json")
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+
+				ectx.SetParamNames("id")
+				ectx.SetParamValues("invalid uuid")
+
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil).Times(1).Return(nil)
+
+				err := restService.handleUpdateSDPackage()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name:   "uc return internal error",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					sdpackageUsecase:     mockSDPackageUc,
+				}
+				req := httptest.NewRequest(http.MethodPut, "/sdt/packages/", strings.NewReader(fmt.Sprintf(`
+					{
+						"request": {
+							"packageName": "name",
+							"templateID": "%s",
+							"subGroupDetails": [
+								{
+									"name": "okname",
+									"questionAndAnswerLists": [
+										{
+											"question": "question",
+											"answerAndValue": [
+												{
+													"text": "text",
+													"value": 99
+												}
+											]
+										}
+									]
+								}
+							]
+						},
+						"signature": ""
+					}
+				`, templateID.String())))
+				req.Header.Set("Content-Type", "application/json")
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+
+				id := uuid.New()
+				ectx.SetParamNames("id")
+				ectx.SetParamValues(id.String())
+
+				cerr := &common.Error{Type: usecase.ErrInternal}
+
+				mockSDPackageUc.EXPECT().Update(ectx.Request().Context(), id, validInput).Times(1).Return(nil, cerr)
+
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, ErrInternal.GenerateStdlibHTTPResponse(nil), nil).Times(1).Return(nil)
+
+				err := restService.handleUpdateSDPackage()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name:   "uc return specific error",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					sdpackageUsecase:     mockSDPackageUc,
+				}
+				req := httptest.NewRequest(http.MethodPut, "/sdt/packages/", strings.NewReader(fmt.Sprintf(`
+					{
+						"request": {
+							"packageName": "name",
+							"templateID": "%s",
+							"subGroupDetails": [
+								{
+									"name": "okname",
+									"questionAndAnswerLists": [
+										{
+											"question": "question",
+											"answerAndValue": [
+												{
+													"text": "text",
+													"value": 99
+												}
+											]
+										}
+									]
+								}
+							]
+						},
+						"signature": ""
+					}
+				`, templateID.String())))
+				req.Header.Set("Content-Type", "application/json")
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+
+				id := uuid.New()
+				ectx.SetParamNames("id")
+				ectx.SetParamValues(id.String())
+
+				cerr := &common.Error{Type: usecase.ErrSDPackageInputInvalid}
+
+				mockSDPackageUc.EXPECT().Update(ectx.Request().Context(), id, validInput).Times(1).Return(nil, cerr)
+
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, cerr.GenerateStdlibHTTPResponse(nil), nil).Times(1).Return(nil)
+
+				err := restService.handleUpdateSDPackage()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
