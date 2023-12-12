@@ -122,7 +122,7 @@ func serverFn(_ *cobra.Command, _ []string) {
 	// Start server
 	go func() {
 		if err := httpServer.Start(config.ServerPort()); err != nil && err != http.ErrServerClosed {
-			httpServer.Logger.Fatal("shutting down the server")
+			httpServer.Logger.Fatal("shutting down the server: ", err.Error())
 		}
 	}()
 

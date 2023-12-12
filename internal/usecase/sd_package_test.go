@@ -666,3 +666,109 @@ func TestSDPackageUsecase_Update(t *testing.T) {
 		})
 	}
 }
+
+func TestSDPackageUsecase_Delete(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	ctx := context.Background()
+
+	mockSDPackageRepo := mock.NewMockSDPackageRepository(kit.Ctrl)
+	uc := NewSDPackageUsecase(mockSDPackageRepo, nil)
+
+	id := uuid.New()
+	now := time.Now().UTC()
+
+	p := &model.SpeechDelayPackage{
+		ID:         uuid.New(),
+		CreatedBy:  uuid.New(),
+		Name:       "name",
+		IsActive:   false,
+		IsLocked:   false,
+		CreatedAt:  now,
+		UpdatedAt:  now,
+		TemplateID: uuid.New(),
+		Package:    &model.SDPackage{},
+	}
+
+	tests := []common.TestStructure{
+		{
+			Name: "ok",
+			MockFn: func() {
+				mockSDPackageRepo.EXPECT().FindByID(ctx, id, false).Times(1).Return(p, nil)
+				mockSDPackageRepo.EXPECT().Delete(ctx, p.ID).Times(1).Return(p, nil)
+			},
+			Run: func() {
+				res, cerr := uc.Delete(ctx, id)
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res, p.ToRESTResponse())
+			},
+		},
+		{
+			Name: "not found or maybe already deleted",
+			MockFn: func() {
+				mockSDPackageRepo.EXPECT().FindByID(ctx, id, false).Times(1).Return(nil, repository.ErrNotFound)
+			},
+			Run: func() {
+				_, cerr := uc.Delete(ctx, id)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrResourceNotFound)
+				assert.Equal(t, cerr.Code, http.StatusNotFound)
+			},
+		},
+		{
+			Name: "failed to find the sd package",
+			MockFn: func() {
+				mockSDPackageRepo.EXPECT().FindByID(ctx, id, false).Times(1).Return(nil, errors.New("db err"))
+			},
+			Run: func() {
+				_, cerr := uc.Delete(ctx, id)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrInternal)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
+			},
+		},
+		{
+			Name: "package locked",
+			MockFn: func() {
+				mockSDPackageRepo.EXPECT().FindByID(ctx, id, false).Times(1).Return(&model.SpeechDelayPackage{
+					ID:         uuid.New(),
+					CreatedBy:  uuid.New(),
+					Name:       "name",
+					IsActive:   true,
+					IsLocked:   true,
+					CreatedAt:  now,
+					UpdatedAt:  now,
+					TemplateID: uuid.New(),
+					Package:    &model.SDPackage{},
+				}, nil)
+			},
+			Run: func() {
+				_, cerr := uc.Delete(ctx, id)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrSDPackageAlreadyLocked)
+				assert.Equal(t, cerr.Code, http.StatusForbidden)
+			},
+		},
+		{
+			Name: "failed to delete",
+			MockFn: func() {
+				mockSDPackageRepo.EXPECT().FindByID(ctx, id, false).Times(1).Return(p, nil)
+				mockSDPackageRepo.EXPECT().Delete(ctx, p.ID).Times(1).Return(nil, errors.New("db err"))
+			},
+			Run: func() {
+				_, cerr := uc.Delete(ctx, id)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrInternal)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
