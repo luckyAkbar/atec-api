@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -211,8 +212,8 @@ func (uc *sdtUc) Delete(ctx context.Context, id uuid.UUID) (*model.GeneratedSDTe
 
 	if template.IsLocked {
 		return nil, &common.Error{
-			Message: "speech delay template is locked",
-			Cause:   nil,
+			Message: "speech delay template is already locked",
+			Cause:   errors.New("speech delay template is already locked"),
 			Code:    http.StatusForbidden,
 			Type:    ErrSDTemplateAlreadyLocked,
 		}
