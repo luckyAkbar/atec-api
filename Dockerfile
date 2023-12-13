@@ -11,4 +11,7 @@ WORKDIR /app
 
 COPY config.yaml .
 COPY private.pem .
+
+
+COPY --from=builder /app/db /db
 COPY --from=builder /app/main /app
