@@ -191,7 +191,7 @@ func (s *service) handleChangeSDTemplateActivationStatus() echo.HandlerFunc {
 		default:
 			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, custerr.GenerateStdlibHTTPResponse(nil), nil)
 		case usecase.ErrInternal:
-			logrus.WithContext(c.Request().Context()).WithError(custerr.Cause).Error("failed to undo delete sd template")
+			logrus.WithContext(c.Request().Context()).WithError(custerr.Cause).Error("failed to update activation status sd template")
 			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrInternal.GenerateStdlibHTTPResponse(nil), nil)
 		case nil:
 			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, &stdhttp.StandardResponse{
