@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"time"
@@ -35,12 +36,147 @@ type SDSubGroupDetail struct {
 type SDPackage struct {
 	PackageName     string             `json:"packageName" validate:"required"`
 	TemplateID      uuid.UUID          `json:"templateID" validate:"required"`
-	SubGroupDetails []SDSubGroupDetail `json:"subGroupDetails" validate:"required,min=1,dive"`
+	SubGroupDetails []SDSubGroupDetail `json:"subGroupDetails" validate:"required,min=1,unique=Name,dive"`
 }
 
 // PartialValidation will validate the SD Package. enough to be used for first time creating / just updating the SD Template
 func (sdp *SDPackage) PartialValidation() error {
 	return validator.Struct(sdp)
+}
+
+// FullValidation will ensure that the SDPackage satisfy all the rules set by supplied SpeechDelayTemplate
+func (sdp *SDPackage) FullValidation(t *SpeechDelayTemplate) error {
+	if err := sdp.PartialValidation(); err != nil {
+		return err
+	}
+
+	// safety check
+	if err := t.Template.FullValidation(); err != nil {
+		return err
+	}
+
+	if !t.IsActive || t.DeletedAt.Valid {
+		return errors.New("template is not active or already deleted")
+	}
+
+	if err := sdp.ensureSubGroupPackageExistsOnTemplate(t); err != nil {
+		return err
+	}
+
+	if err := sdp.ensureSubGroupTemplateExistsOnPackage(t); err != nil {
+		return err
+	}
+
+	return sdp.ensureAllQuestionsAndAnwerMatchToTemplate(t)
+}
+
+// this process ensure all the sub group on package also exists on template
+// prevent an unregistered sub group on package
+func (sdp *SDPackage) ensureSubGroupPackageExistsOnTemplate(t *SpeechDelayTemplate) error {
+	matchCount := 0
+	for _, s := range sdp.SubGroupDetails {
+		for _, q := range t.Template.SubGroupDetails {
+			if s.Name == q.Name {
+				matchCount++
+			}
+		}
+	}
+
+	if matchCount != len(sdp.SubGroupDetails) {
+		return errors.New("at least one sub group package details exists, but not present on the template")
+	}
+
+	return nil
+}
+
+// this ensure that all sub group details on template also present on the package
+func (sdp *SDPackage) ensureSubGroupTemplateExistsOnPackage(t *SpeechDelayTemplate) error {
+	matchCount := 0
+	for _, q := range t.Template.SubGroupDetails {
+		for _, s := range sdp.SubGroupDetails {
+			if s.Name == q.Name {
+				matchCount++
+			}
+		}
+	}
+
+	if matchCount != len(t.Template.SubGroupDetails) {
+		return errors.New("at least one sub group template details is not present on the package sub group details")
+	}
+
+	return nil
+}
+
+// matcher only be used to easily pair the sub group from package with sub group from template
+type matcher struct {
+	template SDTemplateSubGroupDetail
+	pack     SDSubGroupDetail
+}
+
+func (sdp *SDPackage) ensureAllQuestionsAndAnwerMatchToTemplate(t *SpeechDelayTemplate) error {
+	// trying to map the matching template sub group to actual package sub group
+	m := []matcher{}
+	for _, tt := range t.Template.SubGroupDetails {
+		for _, tq := range sdp.SubGroupDetails {
+			if tt.Name == tq.Name {
+				m = append(m, matcher{
+					template: tt,
+					pack:     tq,
+				})
+			}
+		}
+	}
+
+	return sdp.validateQuestionCountAndAnswerCount(m)
+}
+
+func (sdp *SDPackage) validateQuestionCountAndAnswerCount(m []matcher) error {
+	for _, d := range m {
+		// ensure that the number of question match the number defined in template
+		if len(d.pack.QuestionAndAnswerLists) != d.template.QuestionCount {
+			return fmt.Errorf("the number of questions on the package is not match with the template, group name: %s expecting %d got %d", d.template.Name, d.template.QuestionCount, len(d.pack.QuestionAndAnswerLists))
+		}
+
+		// ensure that every question's answer match the number defined in template
+		for _, q := range d.pack.QuestionAndAnswerLists {
+			if len(q.AnswersAndValue) != d.template.AnswerOptionCount {
+				return fmt.Errorf("the number of answers on the package is not match with the template, group name: %s expecting %d got %d", d.template.Name, d.template.AnswerOptionCount, len(q.AnswersAndValue))
+			}
+		}
+
+		if err := sdp.ensureAllValuesAreOrdered(d); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// this func ensure that the value list are ordered, from 1 to the number of specified question count
+// e.g ensure 1, 2, 3, 4 are the Value when AnswerOptionCount are 4, not 1, 2, 3, 5, 6
+func (sdp *SDPackage) ensureAllValuesAreOrdered(d matcher) error {
+	arrVal := []int{}
+	for _, aav := range d.pack.QuestionAndAnswerLists {
+		for _, tav := range aav.AnswersAndValue {
+			arrVal = append(arrVal, tav.Value)
+		}
+	}
+
+	for i := 1; i <= d.template.AnswerOptionCount; i++ {
+		found := false
+		for _, v := range arrVal {
+			if v == i {
+				found = true
+				continue
+			}
+		}
+
+		if !found {
+			return fmt.Errorf("on value list in group %s missing answer with value: %d", d.template.Name, i)
+		}
+	}
+
+	return nil
 }
 
 // Scan is a function to scan database value to CreateSDTemplateInput
@@ -191,6 +327,7 @@ type SDPackageUsecase interface {
 	Update(ctx context.Context, id uuid.UUID, input *SDPackage) (*GeneratedSDPackage, *common.Error)
 	Delete(ctx context.Context, id uuid.UUID) (*GeneratedSDPackage, *common.Error)
 	UndoDelete(ctx context.Context, id uuid.UUID) (*GeneratedSDPackage, *common.Error)
+	ChangeSDPackageActiveStatus(ctx context.Context, id uuid.UUID, isActive bool) (*GeneratedSDPackage, *common.Error)
 }
 
 // SDPackageRepository interface for SD package repository

@@ -53,4 +53,5 @@ func (s *service) initRoutes() {
 	s.rootGroup.PUT("/sdt/packages/:id/", s.handleUpdateSDPackage(), s.authMiddleware(true))
 	s.rootGroup.DELETE("/sdt/packages/:id/", s.handleDeleteSDPackage(), s.authMiddleware(true))
 	s.rootGroup.PATCH("/sdt/packages/:id/", s.handleUndoDeleteSDPackage(), s.authMiddleware(true))
+	s.rootGroup.PATCH("/sdt/packages/:id/activation-status/", s.handleChangeSDPackageActivationStatus(), s.authMiddleware(true))
 }

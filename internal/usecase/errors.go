@@ -75,6 +75,9 @@ var (
 
 	// ErrSDPackageAlreadyLocked is returned when sd package is already locked
 	ErrSDPackageAlreadyLocked = errors.New("004002")
+
+	// ErrSDPackageCantBeActivated will be returned when sd package fails on full validation
+	ErrSDPackageCantBeActivated = errors.New("004003")
 )
 
 var nilErr = &common.Error{

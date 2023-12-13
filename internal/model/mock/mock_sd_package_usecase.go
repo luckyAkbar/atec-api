@@ -37,6 +37,21 @@ func (m *MockSDPackageUsecase) EXPECT() *MockSDPackageUsecaseMockRecorder {
 	return m.recorder
 }
 
+// ChangeSDPackageActiveStatus mocks base method.
+func (m *MockSDPackageUsecase) ChangeSDPackageActiveStatus(arg0 context.Context, arg1 uuid.UUID, arg2 bool) (*model.GeneratedSDPackage, *common.Error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ChangeSDPackageActiveStatus", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*model.GeneratedSDPackage)
+	ret1, _ := ret[1].(*common.Error)
+	return ret0, ret1
+}
+
+// ChangeSDPackageActiveStatus indicates an expected call of ChangeSDPackageActiveStatus.
+func (mr *MockSDPackageUsecaseMockRecorder) ChangeSDPackageActiveStatus(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChangeSDPackageActiveStatus", reflect.TypeOf((*MockSDPackageUsecase)(nil).ChangeSDPackageActiveStatus), arg0, arg1, arg2)
+}
+
 // Create mocks base method.
 func (m *MockSDPackageUsecase) Create(arg0 context.Context, arg1 *model.SDPackage) (*model.GeneratedSDPackage, *common.Error) {
 	m.ctrl.T.Helper()
