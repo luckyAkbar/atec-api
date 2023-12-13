@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"time"
@@ -35,7 +36,7 @@ type SDSubGroupDetail struct {
 type SDPackage struct {
 	PackageName     string             `json:"packageName" validate:"required"`
 	TemplateID      uuid.UUID          `json:"templateID" validate:"required"`
-	SubGroupDetails []SDSubGroupDetail `json:"subGroupDetails" validate:"required,min=1,dive"`
+	SubGroupDetails []SDSubGroupDetail `json:"subGroupDetails" validate:"required,min=1,unique=Name,dive"`
 }
 
 // PartialValidation will validate the SD Package. enough to be used for first time creating / just updating the SD Template
@@ -326,6 +327,7 @@ type SDPackageUsecase interface {
 	Update(ctx context.Context, id uuid.UUID, input *SDPackage) (*GeneratedSDPackage, *common.Error)
 	Delete(ctx context.Context, id uuid.UUID) (*GeneratedSDPackage, *common.Error)
 	UndoDelete(ctx context.Context, id uuid.UUID) (*GeneratedSDPackage, *common.Error)
+	ChangeSDPackageActiveStatus(ctx context.Context, id uuid.UUID, isActive bool) (*GeneratedSDPackage, *common.Error)
 }
 
 // SDPackageRepository interface for SD package repository
