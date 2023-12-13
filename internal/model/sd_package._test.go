@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/luckyAkbar/atec-api/internal/common"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
 )
 
 func TestModel_SDPackage_PartialValidation(t *testing.T) {
@@ -322,14 +323,14 @@ func TestModel_SDPackage_PartialValidation(t *testing.T) {
 			},
 		},
 		{
-			Name: "ok juga",
+			Name: "sub group name must be deeply unique",
 			Run: func() {
 				in := &SDPackage{
 					PackageName: "valid package name",
 					TemplateID:  uuid.New(),
 					SubGroupDetails: []SDSubGroupDetail{
 						{
-							Name: "valid name",
+							Name: "must be unique here",
 							QuestionAndAnswerLists: []SDQuestionAndAnswers{
 								{
 									Question: "valid question?",
@@ -347,7 +348,7 @@ func TestModel_SDPackage_PartialValidation(t *testing.T) {
 							},
 						},
 						{
-							Name: "valid name",
+							Name: "must be unique here",
 							QuestionAndAnswerLists: []SDQuestionAndAnswers{
 								{
 									Question: "valid question?",
@@ -359,59 +360,6 @@ func TestModel_SDPackage_PartialValidation(t *testing.T) {
 										{
 											Text:  "pilihan kedua, tapi value nya sama",
 											Value: 100,
-										},
-									},
-								},
-							},
-						},
-						{
-							Name: "valid name",
-							QuestionAndAnswerLists: []SDQuestionAndAnswers{
-								{
-									Question: "valid question?",
-									AnswersAndValue: []SDAnswerAndValue{
-										{
-											Text:  "pilihan pertama",
-											Value: 99,
-										},
-										{
-											Text:  "pilihan kedua, tapi value nya sama",
-											Value: 100,
-										},
-									},
-								},
-							},
-						},
-						{
-							Name: "another valid group name",
-							QuestionAndAnswerLists: []SDQuestionAndAnswers{
-								{
-									Question: "valid question?",
-									AnswersAndValue: []SDAnswerAndValue{
-										{
-											Text:  "pilihan pertama",
-											Value: 99,
-										},
-										{
-											Text:  "pilihan kedua, tapi value nya sama",
-											Value: 100,
-										},
-									},
-								},
-								{
-									Question: "valid question?",
-									AnswersAndValue: []SDAnswerAndValue{
-										{
-											Text:  "pilihan pertama",
-											Value: 1001,
-										},
-										{
-											Text:  "pilihan kedua, tapi value nya sama",
-											Value: 100,
-										},
-										{
-											Text:  "pilihan ketiga, tapi ya begitulah",
-											Value: 11,
 										},
 									},
 								},
@@ -419,7 +367,7 @@ func TestModel_SDPackage_PartialValidation(t *testing.T) {
 						},
 					},
 				}
-				assert.NoError(t, in.PartialValidation())
+				assert.Error(t, in.PartialValidation())
 			},
 		},
 	}
@@ -501,6 +449,730 @@ func TestSDTemplate_SearchSDPackageInput_ToWhereQuery(t *testing.T) {
 				assert.Equal(t, in.Limit, 10)
 				assert.Equal(t, in.Offset, 10009)
 
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.Run()
+		})
+	}
+}
+
+func TestModel_SDPackage_FullValidation(t *testing.T) {
+	tests := []common.TestStructure{
+		{
+			Name: "all empty",
+			Run: func() {
+				in := &SDPackage{}
+				assert.Error(t, in.FullValidation(nil))
+			},
+		},
+		{
+			Name: "package name empty",
+			Run: func() {
+				in := &SDPackage{
+					PackageName: "",
+				}
+				assert.Error(t, in.FullValidation(nil))
+			},
+		},
+		{
+			Name: "template id empty",
+			Run: func() {
+				in := &SDPackage{
+					PackageName: "valid package name",
+				}
+				assert.Error(t, in.FullValidation(nil))
+			},
+		},
+		{
+			Name: "sub group details len is 0",
+			Run: func() {
+				in := &SDPackage{
+					PackageName:     "valid package name",
+					TemplateID:      uuid.New(),
+					SubGroupDetails: []SDSubGroupDetail{},
+				}
+				assert.Error(t, in.FullValidation(nil))
+			},
+		},
+		{
+			Name: "sub group details name is empty",
+			Run: func() {
+				in := &SDPackage{
+					PackageName: "valid package name",
+					TemplateID:  uuid.New(),
+					SubGroupDetails: []SDSubGroupDetail{
+						{
+							Name: "",
+						},
+					},
+				}
+				assert.Error(t, in.FullValidation(nil))
+			},
+		},
+		{
+			Name: "SubGroupDetails.QuestionAndAnswerLists length is 0",
+			Run: func() {
+				in := &SDPackage{
+					PackageName: "valid package name",
+					TemplateID:  uuid.New(),
+					SubGroupDetails: []SDSubGroupDetail{
+						{
+							Name:                   "valid name",
+							QuestionAndAnswerLists: []SDQuestionAndAnswers{},
+						},
+					},
+				}
+				assert.Error(t, in.FullValidation(nil))
+			},
+		},
+		{
+			Name: "SubGroupDetails.QuestionAndAnswerLists.Question is empty",
+			Run: func() {
+				in := &SDPackage{
+					PackageName: "valid package name",
+					TemplateID:  uuid.New(),
+					SubGroupDetails: []SDSubGroupDetail{
+						{
+							Name: "valid name",
+							QuestionAndAnswerLists: []SDQuestionAndAnswers{
+								{
+									Question: "",
+								},
+							},
+						},
+					},
+				}
+				assert.Error(t, in.FullValidation(nil))
+			},
+		},
+		{
+			Name: "SubGroupDetails.QuestionAndAnswerLists.AnswersAndValue length is 0",
+			Run: func() {
+				in := &SDPackage{
+					PackageName: "valid package name",
+					TemplateID:  uuid.New(),
+					SubGroupDetails: []SDSubGroupDetail{
+						{
+							Name: "valid name",
+							QuestionAndAnswerLists: []SDQuestionAndAnswers{
+								{
+									Question:        "valid question?",
+									AnswersAndValue: []SDAnswerAndValue{},
+								},
+							},
+						},
+					},
+				}
+				assert.Error(t, in.FullValidation(nil))
+			},
+		},
+		{
+			Name: "SubGroupDetails.QuestionAndAnswerLists.AnswersAndValue.Text is empty",
+			Run: func() {
+				in := &SDPackage{
+					PackageName: "valid package name",
+					TemplateID:  uuid.New(),
+					SubGroupDetails: []SDSubGroupDetail{
+						{
+							Name: "valid name",
+							QuestionAndAnswerLists: []SDQuestionAndAnswers{
+								{
+									Question: "valid question?",
+									AnswersAndValue: []SDAnswerAndValue{
+										{
+											Text: "",
+										},
+									},
+								},
+							},
+						},
+					},
+				}
+				assert.Error(t, in.FullValidation(nil))
+			},
+		},
+		{
+			Name: "SubGroupDetails.QuestionAndAnswerLists.AnswersAndValue.Value is set to 0",
+			Run: func() {
+				in := &SDPackage{
+					PackageName: "valid package name",
+					TemplateID:  uuid.New(),
+					SubGroupDetails: []SDSubGroupDetail{
+						{
+							Name: "valid name",
+							QuestionAndAnswerLists: []SDQuestionAndAnswers{
+								{
+									Question: "valid question?",
+									AnswersAndValue: []SDAnswerAndValue{
+										{
+											Text:  "pilihan pertama",
+											Value: 0,
+										},
+									},
+								},
+							},
+						},
+					},
+				}
+				assert.Error(t, in.FullValidation(nil))
+			},
+		},
+		{
+			Name: "SubGroupDetails.QuestionAndAnswerLists.AnswersAndValue.Value is set below 0",
+			Run: func() {
+				in := &SDPackage{
+					PackageName: "valid package name",
+					TemplateID:  uuid.New(),
+					SubGroupDetails: []SDSubGroupDetail{
+						{
+							Name: "valid name",
+							QuestionAndAnswerLists: []SDQuestionAndAnswers{
+								{
+									Question: "valid question?",
+									AnswersAndValue: []SDAnswerAndValue{
+										{
+											Text:  "pilihan pertama",
+											Value: -100,
+										},
+									},
+								},
+							},
+						},
+					},
+				}
+				assert.Error(t, in.FullValidation(nil))
+			},
+		},
+		{
+			Name: "SubGroupDetails.QuestionAndAnswerLists.AnswersAndValue.Value is duplicated",
+			Run: func() {
+				in := &SDPackage{
+					PackageName: "valid package name",
+					TemplateID:  uuid.New(),
+					SubGroupDetails: []SDSubGroupDetail{
+						{
+							Name: "valid name",
+							QuestionAndAnswerLists: []SDQuestionAndAnswers{
+								{
+									Question: "valid question?",
+									AnswersAndValue: []SDAnswerAndValue{
+										{
+											Text:  "pilihan pertama",
+											Value: 100,
+										},
+										{
+											Text:  "pilihan kedua, tapi value nya sama",
+											Value: 100,
+										},
+									},
+								},
+							},
+						},
+					},
+				}
+				assert.Error(t, in.FullValidation(nil))
+			},
+		},
+		{
+			Name: "template fail on full validation",
+			Run: func() {
+				in := &SDPackage{
+					PackageName: "valid package name",
+					TemplateID:  uuid.New(),
+					SubGroupDetails: []SDSubGroupDetail{
+						{
+							Name: "valid name",
+							QuestionAndAnswerLists: []SDQuestionAndAnswers{
+								{
+									Question: "valid question?",
+									AnswersAndValue: []SDAnswerAndValue{
+										{
+											Text:  "pilihan pertama",
+											Value: 99,
+										},
+										{
+											Text:  "pilihan kedua, tapi value nya sama",
+											Value: 100,
+										},
+									},
+								},
+							},
+						},
+					},
+				}
+				assert.Error(t, in.FullValidation(&SpeechDelayTemplate{Template: &SDTemplate{}}))
+			},
+		},
+		{
+			Name: "template inactive",
+			Run: func() {
+				in := &SDPackage{
+					PackageName: "valid package name",
+					TemplateID:  uuid.New(),
+					SubGroupDetails: []SDSubGroupDetail{
+						{
+							Name: "valid name",
+							QuestionAndAnswerLists: []SDQuestionAndAnswers{
+								{
+									Question: "valid question?",
+									AnswersAndValue: []SDAnswerAndValue{
+										{
+											Text:  "pilihan pertama",
+											Value: 99,
+										},
+										{
+											Text:  "pilihan kedua, tapi value nya sama",
+											Value: 100,
+										},
+									},
+								},
+							},
+						},
+					},
+				}
+				assert.Error(t, in.FullValidation(&SpeechDelayTemplate{
+					IsActive: false,
+					Template: &SDTemplate{
+						Name:                   "ok",
+						IndicationThreshold:    10,
+						PositiveIndiationText:  "ok",
+						NegativeIndicationText: "ok jg",
+						SubGroupDetails: []SDTemplateSubGroupDetail{
+							{
+								Name:              "okelah",
+								QuestionCount:     10,
+								AnswerOptionCount: 3,
+							},
+							{
+								Name:              "okeh juga",
+								QuestionCount:     10,
+								AnswerOptionCount: 5,
+							},
+						},
+					}}))
+			},
+		},
+		{
+			Name: "template was deleted",
+			Run: func() {
+				in := &SDPackage{
+					PackageName: "valid package name",
+					TemplateID:  uuid.New(),
+					SubGroupDetails: []SDSubGroupDetail{
+						{
+							Name: "valid name",
+							QuestionAndAnswerLists: []SDQuestionAndAnswers{
+								{
+									Question: "valid question?",
+									AnswersAndValue: []SDAnswerAndValue{
+										{
+											Text:  "pilihan pertama",
+											Value: 99,
+										},
+										{
+											Text:  "pilihan kedua, tapi value nya sama",
+											Value: 100,
+										},
+									},
+								},
+							},
+						},
+					},
+				}
+				assert.Error(t, in.FullValidation(&SpeechDelayTemplate{
+					IsActive:  true,
+					DeletedAt: gorm.DeletedAt{Time: time.Now(), Valid: true},
+					Template: &SDTemplate{
+						Name:                   "ok",
+						IndicationThreshold:    10,
+						PositiveIndiationText:  "ok",
+						NegativeIndicationText: "ok jg",
+						SubGroupDetails: []SDTemplateSubGroupDetail{
+							{
+								Name:              "okelah",
+								QuestionCount:     10,
+								AnswerOptionCount: 3,
+							},
+							{
+								Name:              "okeh juga",
+								QuestionCount:     10,
+								AnswerOptionCount: 5,
+							},
+						},
+					}}))
+			},
+		},
+		{
+			Name: "at least one sub group on package don't exist on template",
+			Run: func() {
+				in := &SDPackage{
+					PackageName: "valid package name",
+					TemplateID:  uuid.New(),
+					SubGroupDetails: []SDSubGroupDetail{
+						{
+							Name: "this dont exists on template",
+							QuestionAndAnswerLists: []SDQuestionAndAnswers{
+								{
+									Question: "valid question?",
+									AnswersAndValue: []SDAnswerAndValue{
+										{
+											Text:  "pilihan pertama",
+											Value: 99,
+										},
+										{
+											Text:  "pilihan kedua, tapi value nya sama",
+											Value: 100,
+										},
+									},
+								},
+							},
+						},
+						{
+							Name: "okelah",
+							QuestionAndAnswerLists: []SDQuestionAndAnswers{
+								{
+									Question: "valid question?",
+									AnswersAndValue: []SDAnswerAndValue{
+										{
+											Text:  "pilihan pertama",
+											Value: 1,
+										},
+										{
+											Text:  "pilihan kedua, tapi value nya sama",
+											Value: 2,
+										},
+									},
+								},
+							},
+						},
+					},
+				}
+				err := in.FullValidation(&SpeechDelayTemplate{
+					IsActive: true,
+					Template: &SDTemplate{
+						Name:                   "ok",
+						IndicationThreshold:    2,
+						PositiveIndiationText:  "ok",
+						NegativeIndicationText: "ok jg",
+						SubGroupDetails: []SDTemplateSubGroupDetail{
+							{
+								Name:              "okelah",
+								QuestionCount:     1,
+								AnswerOptionCount: 2,
+							},
+						},
+					},
+				})
+				assert.Error(t, err)
+				assert.Equal(t, err.Error(), "at least one sub group package details exists, but not present on the template")
+			},
+		},
+		{
+			Name: "at least one sub group on template don't exist on package",
+			Run: func() {
+				in := &SDPackage{
+					PackageName: "valid package name",
+					TemplateID:  uuid.New(),
+					SubGroupDetails: []SDSubGroupDetail{
+						{
+							Name: "okelah",
+							QuestionAndAnswerLists: []SDQuestionAndAnswers{
+								{
+									Question: "valid question?",
+									AnswersAndValue: []SDAnswerAndValue{
+										{
+											Text:  "pilihan pertama",
+											Value: 1,
+										},
+										{
+											Text:  "pilihan kedua, tapi value nya sama",
+											Value: 2,
+										},
+									},
+								},
+							},
+						},
+					},
+				}
+				err := in.FullValidation(&SpeechDelayTemplate{
+					IsActive: true,
+					Template: &SDTemplate{
+						Name:                   "ok",
+						IndicationThreshold:    2,
+						PositiveIndiationText:  "ok",
+						NegativeIndicationText: "ok jg",
+						SubGroupDetails: []SDTemplateSubGroupDetail{
+							{
+								Name:              "okelah",
+								QuestionCount:     1,
+								AnswerOptionCount: 2,
+							},
+							{
+								Name:              "dont exists on package :()",
+								QuestionCount:     1,
+								AnswerOptionCount: 2,
+							},
+						},
+					},
+				})
+				assert.Error(t, err)
+				assert.Equal(t, err.Error(), "at least one sub group template details is not present on the package sub group details")
+			},
+		},
+		{
+			Name: "a group questions count don't match the specified one",
+			Run: func() {
+				in := &SDPackage{
+					PackageName: "valid package name",
+					TemplateID:  uuid.New(),
+					SubGroupDetails: []SDSubGroupDetail{
+						{
+							Name: "okelah",
+							QuestionAndAnswerLists: []SDQuestionAndAnswers{
+								{
+									Question: "valid question?",
+									AnswersAndValue: []SDAnswerAndValue{
+										{
+											Text:  "pilihan pertama",
+											Value: 1,
+										},
+										{
+											Text:  "pilihan kedua, tapi value nya sama",
+											Value: 2,
+										},
+									},
+								},
+							},
+						},
+					},
+				}
+				err := in.FullValidation(&SpeechDelayTemplate{
+					IsActive: true,
+					Template: &SDTemplate{
+						Name:                   "ok",
+						IndicationThreshold:    2,
+						PositiveIndiationText:  "ok",
+						NegativeIndicationText: "ok jg",
+						SubGroupDetails: []SDTemplateSubGroupDetail{
+							{
+								Name:              "okelah",
+								QuestionCount:     2,
+								AnswerOptionCount: 2,
+							},
+						},
+					},
+				})
+				assert.Error(t, err)
+				assert.Equal(t, err.Error(), "the number of questions on the package is not match with the template, group name: okelah expecting 2 got 1")
+			},
+		},
+		{
+			Name: "a group answer count is less than the specified one",
+			Run: func() {
+				in := &SDPackage{
+					PackageName: "valid package name",
+					TemplateID:  uuid.New(),
+					SubGroupDetails: []SDSubGroupDetail{
+						{
+							Name: "okelah",
+							QuestionAndAnswerLists: []SDQuestionAndAnswers{
+								{
+									Question: "valid question?",
+									AnswersAndValue: []SDAnswerAndValue{
+										{
+											Text:  "pilihan pertama",
+											Value: 1,
+										},
+										{
+											Text:  "pilihan ketigax",
+											Value: 2,
+										},
+										{
+											Text:  "pilihan kedua, tapi value nya sama",
+											Value: 3,
+										},
+									},
+								},
+							},
+						},
+					},
+				}
+				err := in.FullValidation(&SpeechDelayTemplate{
+					IsActive: true,
+					Template: &SDTemplate{
+						Name:                   "ok",
+						IndicationThreshold:    2,
+						PositiveIndiationText:  "ok",
+						NegativeIndicationText: "ok jg",
+						SubGroupDetails: []SDTemplateSubGroupDetail{
+							{
+								Name:              "okelah",
+								QuestionCount:     1,
+								AnswerOptionCount: 2,
+							},
+						},
+					},
+				})
+				assert.Error(t, err)
+				assert.Equal(t, err.Error(), "the number of answers on the package is not match with the template, group name: okelah expecting 2 got 3")
+			},
+		},
+		{
+			Name: "answer's value list is not complete. e.g 1,2,3 but got 1,2,4",
+			Run: func() {
+				in := &SDPackage{
+					PackageName: "valid package name",
+					TemplateID:  uuid.New(),
+					SubGroupDetails: []SDSubGroupDetail{
+						{
+							Name: "okelah",
+							QuestionAndAnswerLists: []SDQuestionAndAnswers{
+								{
+									Question: "valid question?",
+									AnswersAndValue: []SDAnswerAndValue{
+										{
+											Text:  "pilihan pertama",
+											Value: 1,
+										},
+										{
+											Text:  "pilihan ketigax",
+											Value: 2,
+										},
+										{
+											Text:  "pilihan kedua, tapi value nya sama",
+											Value: 4,
+										},
+									},
+								},
+							},
+						},
+					},
+				}
+				err := in.FullValidation(&SpeechDelayTemplate{
+					IsActive: true,
+					Template: &SDTemplate{
+						Name:                   "ok",
+						IndicationThreshold:    2,
+						PositiveIndiationText:  "ok",
+						NegativeIndicationText: "ok jg",
+						SubGroupDetails: []SDTemplateSubGroupDetail{
+							{
+								Name:              "okelah",
+								QuestionCount:     1,
+								AnswerOptionCount: 3,
+							},
+						},
+					},
+				})
+				assert.Error(t, err)
+				assert.Equal(t, err.Error(), "on value list in group okelah missing answer with value: 3")
+			},
+		},
+		{
+			Name: "answer's value list is not complete. e.g 1,2,3 but got 1,2,4",
+			Run: func() {
+				in := &SDPackage{
+					PackageName: "valid package name",
+					TemplateID:  uuid.New(),
+					SubGroupDetails: []SDSubGroupDetail{
+						{
+							Name: "okelah",
+							QuestionAndAnswerLists: []SDQuestionAndAnswers{
+								{
+									Question: "valid question?",
+									AnswersAndValue: []SDAnswerAndValue{
+										{
+											Text:  "pilihan pertama",
+											Value: 1,
+										},
+										{
+											Text:  "pilihan kedua, tapi value nya sama",
+											Value: 4,
+										},
+
+										{
+											Text:  "pilihan ketigax",
+											Value: 5,
+										},
+									},
+								},
+							},
+						},
+					},
+				}
+				err := in.FullValidation(&SpeechDelayTemplate{
+					IsActive: true,
+					Template: &SDTemplate{
+						Name:                   "ok",
+						IndicationThreshold:    2,
+						PositiveIndiationText:  "ok",
+						NegativeIndicationText: "ok jg",
+						SubGroupDetails: []SDTemplateSubGroupDetail{
+							{
+								Name:              "okelah",
+								QuestionCount:     1,
+								AnswerOptionCount: 3,
+							},
+						},
+					},
+				})
+				assert.Error(t, err)
+				assert.Equal(t, err.Error(), "on value list in group okelah missing answer with value: 2")
+			},
+		},
+		{
+			Name: "ok",
+			Run: func() {
+				in := &SDPackage{
+					PackageName: "valid package name",
+					TemplateID:  uuid.New(),
+					SubGroupDetails: []SDSubGroupDetail{
+						{
+							Name: "okelah",
+							QuestionAndAnswerLists: []SDQuestionAndAnswers{
+								{
+									Question: "valid question?",
+									AnswersAndValue: []SDAnswerAndValue{
+										{
+											Text:  "pilihan pertama",
+											Value: 1,
+										},
+										{
+											Text:  "pilihan kedua, tapi value nya sama",
+											Value: 2,
+										},
+
+										{
+											Text:  "pilihan ketigax",
+											Value: 3,
+										},
+									},
+								},
+							},
+						},
+					},
+				}
+				err := in.FullValidation(&SpeechDelayTemplate{
+					IsActive: true,
+					Template: &SDTemplate{
+						Name:                   "ok",
+						IndicationThreshold:    2,
+						PositiveIndiationText:  "ok",
+						NegativeIndicationText: "ok jg",
+						SubGroupDetails: []SDTemplateSubGroupDetail{
+							{
+								Name:              "okelah",
+								QuestionCount:     1,
+								AnswerOptionCount: 3,
+							},
+						},
+					},
+				})
+				assert.NoError(t, err)
 			},
 		},
 	}
