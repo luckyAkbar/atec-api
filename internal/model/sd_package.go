@@ -155,24 +155,21 @@ func (sdp *SDPackage) validateQuestionCountAndAnswerCount(m []matcher) error {
 // this func ensure that the value list are ordered, from 1 to the number of specified question count
 // e.g ensure 1, 2, 3, 4 are the Value when AnswerOptionCount are 4, not 1, 2, 3, 5, 6
 func (sdp *SDPackage) ensureAllValuesAreOrdered(d matcher) error {
-	arrVal := []int{}
-	for _, aav := range d.pack.QuestionAndAnswerLists {
-		for _, tav := range aav.AnswersAndValue {
-			arrVal = append(arrVal, tav.Value)
-		}
-	}
-
-	for i := 1; i <= d.template.AnswerOptionCount; i++ {
-		found := false
-		for _, v := range arrVal {
-			if v == i {
-				found = true
-				continue
+	for _, a := range d.pack.QuestionAndAnswerLists {
+		for _, b := range a.AnswersAndValue {
+			found := false
+			missing := 0
+			for i := 1; i <= d.template.AnswerOptionCount; i++ {
+				if b.Value == i {
+					found = true
+					break
+				}
+				missing = i
 			}
-		}
 
-		if !found {
-			return fmt.Errorf("on value list in group %s missing answer with value: %d", d.template.Name, i)
+			if !found {
+				return fmt.Errorf("value list on group %s was not complete. Missing value %d and expecting range %d - %d", d.template.Name, missing, 1, d.template.AnswerOptionCount)
+			}
 		}
 	}
 
