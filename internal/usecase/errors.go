@@ -70,6 +70,7 @@ var (
 	// ErrSDTemplateIsDeactivated will be returned when trying to create package from inactive template
 	ErrSDTemplateIsDeactivated = errors.New("003004")
 
+	// ErrSDTemplateIsAlreadyActive will be returned when trying to update an active template
 	ErrSDTemplateIsAlreadyActive = errors.New("003005")
 
 	// ErrSDPackageInputInvalid is returned when input is invalid
@@ -81,6 +82,7 @@ var (
 	// ErrSDPackageCantBeActivated will be returned when sd package fails on full validation
 	ErrSDPackageCantBeActivated = errors.New("004003")
 
+	// ErrSDPackageAlreadyActive will be returned if trying to update an active sd package
 	ErrSDPackageAlreadyActive = errors.New("004004")
 )
 
