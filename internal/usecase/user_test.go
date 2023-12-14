@@ -412,6 +412,21 @@ func TestUserUsecase_VerifyAccount(t *testing.T) {
 				mockPinRepo.EXPECT().FindByID(ctx, input.PinValidationID).Times(1).Return(pin, nil)
 				mockSharedCryptor.EXPECT().CompareHash(gomock.Any(), []byte(input.Pin)).Times(1).Return(nil)
 				mockUserRepo.EXPECT().UpdateActiveStatus(ctx, pin.UserID, true).Times(1).Return(user, nil)
+				mockSharedCryptor.EXPECT().Decrypt(gomock.Any()).Return("decrypted", nil)
+			},
+			Run: func() {
+				okresp, _, err := uc.VerifyAccount(ctx, input)
+				assert.NoError(t, err.Type)
+				assert.Equal(t, okresp.IsActive, true)
+			},
+		},
+		{
+			Name: "ok - even if failed to decrypt",
+			MockFn: func() {
+				mockPinRepo.EXPECT().FindByID(ctx, input.PinValidationID).Times(1).Return(pin, nil)
+				mockSharedCryptor.EXPECT().CompareHash(gomock.Any(), []byte(input.Pin)).Times(1).Return(nil)
+				mockUserRepo.EXPECT().UpdateActiveStatus(ctx, pin.UserID, true).Times(1).Return(user, nil)
+				mockSharedCryptor.EXPECT().Decrypt(gomock.Any()).Return("", errors.New("err"))
 			},
 			Run: func() {
 				okresp, _, err := uc.VerifyAccount(ctx, input)

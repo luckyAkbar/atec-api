@@ -273,9 +273,14 @@ func (u *userUc) VerifyAccount(ctx context.Context, input *model.AccountVerifica
 		}
 	}
 
+	plainEmail, err := u.sharedCryptor.Decrypt(user.Email)
+	if err != nil {
+		logger.WithError(err).Error("failed to decrypt email, reporting and continue...")
+	}
+
 	return &model.SuccessAccountVerificationResponse{
 		ID:        user.ID,
-		Email:     user.Email,
+		Email:     plainEmail,
 		Username:  user.Username,
 		IsActive:  user.IsActive,
 		Role:      user.Role,
