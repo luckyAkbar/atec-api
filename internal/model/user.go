@@ -2,6 +2,8 @@ package model
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	"encoding/json"
@@ -20,6 +22,21 @@ const (
 	RoleAdmin Role = "ADMIN"
 	RoleUser  Role = "USER"
 )
+
+// UnmarshalText implements Text Unmarshaler
+func (r *Role) UnmarshalText(text []byte) error {
+	str := string(text)
+	switch strings.ToUpper(str) {
+	default:
+		return fmt.Errorf("role: %s is not a valid role", str)
+	case "ADMIN":
+		*r = RoleAdmin
+	case "USER":
+		*r = RoleUser
+	}
+
+	return nil
+}
 
 // User represent "users" table
 type User struct {
@@ -42,6 +59,34 @@ func (u *User) IsBlocked() bool {
 // IsAdmin return true if Role is RoleAdmin, false otherwise
 func (u *User) IsAdmin() bool {
 	return u.Role == RoleAdmin
+}
+
+// ToRESTResponse convert User to FindUserResponse which ease rest response generation
+func (u *User) ToRESTResponse(plainEmail string) *FindUserResponse {
+	return &FindUserResponse{
+		ID:        u.ID,
+		Email:     plainEmail,
+		Password:  u.Password,
+		Username:  u.Username,
+		IsActive:  u.IsActive,
+		Role:      u.Role,
+		CreatedAt: u.CreatedAt,
+		UpdatedAt: u.UpdatedAt,
+		DeletedAt: u.DeletedAt,
+	}
+}
+
+// FindUserResponse can be used to return the User data to API response. It's better to use this than directly return the User struct
+type FindUserResponse struct {
+	ID        uuid.UUID      `json:"id"`
+	Email     string         `json:"email"`
+	Password  string         `json:"password"`
+	Username  string         `json:"username"`
+	IsActive  bool           `json:"isActive"`
+	Role      Role           `json:"role"`
+	CreatedAt time.Time      `json:"createdAt"`
+	UpdatedAt time.Time      `json:"updatedAt"`
+	DeletedAt gorm.DeletedAt `json:"deletedAt,omitempty"`
 }
 
 // SignUpInput will be the request format to sign up
@@ -122,11 +167,66 @@ type InitiateResetPasswordOutput struct {
 	Email    string    `json:"email"`
 }
 
+// SearchUserInput input
+type SearchUserInput struct {
+	Username       string `query:"username"`
+	Email          string `query:"email"`
+	IsActive       *bool  `query:"isActive"`
+	IncludeDeleted bool   `query:"includeDeleted"`
+	Role           Role   `query:"role"`
+	Limit          int    `query:"limit"`
+	Offset         int    `query:"offset"`
+}
+
+// ToWhereQuery convert SearchUserInput to where query and conditions. If limit is unset / set over 100, will be set to 100.
+// If offset is unset / set under 0, will be set to 0.
+func (sui *SearchUserInput) ToWhereQuery() ([]interface{}, []interface{}) {
+	var whereQuery []interface{}
+	var conds []interface{}
+
+	if sui.Limit < 0 || sui.Limit > 100 {
+		sui.Limit = 100
+	}
+
+	if sui.Offset < 0 {
+		sui.Offset = 0
+	}
+
+	if sui.Username != "" {
+		whereQuery = append(whereQuery, "username ILIKE ?")
+		conds = append(conds, "%"+sui.Username+"%")
+	}
+
+	if sui.Email != "" {
+		whereQuery = append(whereQuery, "email ILIKE ?")
+		conds = append(conds, "%"+sui.Email+"%")
+	}
+
+	if sui.IsActive != nil {
+		whereQuery = append(whereQuery, "is_active = ?")
+		conds = append(conds, *sui.IsActive)
+	}
+
+	if sui.Role != "" {
+		whereQuery = append(whereQuery, "role = ?")
+		conds = append(conds, sui.Role)
+	}
+
+	return whereQuery, conds
+}
+
+// SearchUserOutput output
+type SearchUserOutput struct {
+	Users []*FindUserResponse `json:"users"`
+	Count int                 `json:"count"`
+}
+
 // UserUsecase user's usecase
 type UserUsecase interface {
 	SignUp(ctx context.Context, input *SignUpInput) (*SignUpResponse, *common.Error)
 	VerifyAccount(ctx context.Context, input *AccountVerificationInput) (*SuccessAccountVerificationResponse, *FailedAccountVerificationResponse, *common.Error)
 	InitiateResetPassword(ctx context.Context, userID uuid.UUID) (*InitiateResetPasswordOutput, *common.Error)
+	Search(ctx context.Context, input *SearchUserInput) (*SearchUserOutput, *common.Error)
 }
 
 // UserRepository user's repository
@@ -138,4 +238,5 @@ type UserRepository interface {
 	CreateChangePasswordSession(ctx context.Context, key string, expiry time.Duration, session *ChangePasswordSession) error
 	FindChangePasswordSession(ctx context.Context, key string) (*ChangePasswordSession, error)
 	Update(ctx context.Context, user *User, tx *gorm.DB) error
+	Search(ctx context.Context, input *SearchUserInput) ([]*User, error)
 }

@@ -396,6 +396,38 @@ func (u *userUc) InitiateResetPassword(ctx context.Context, userID uuid.UUID) (*
 	}, nilErr
 }
 
+func (u *userUc) Search(ctx context.Context, input *model.SearchUserInput) (*model.SearchUserOutput, *common.Error) {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func":  "userUc.Search",
+		"input": helper.Dump(input),
+	})
+
+	res, err := u.userRepo.Search(ctx, input)
+	if err != nil {
+		logger.WithError(err).Error("failed to search users data")
+		return nil, &common.Error{
+			Message: "failed to find users",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	}
+
+	response := []*model.FindUserResponse{}
+	for _, v := range res {
+		plainEmail, err := u.sharedCryptor.Decrypt(v.Email)
+		if err != nil {
+			logger.WithError(err).Error("failed to decrypt email, reporting and continue...")
+		}
+		response = append(response, v.ToRESTResponse(plainEmail))
+	}
+
+	return &model.SearchUserOutput{
+		Users: response,
+		Count: len(res),
+	}, nilErr
+}
+
 func generatePinForOTP() string {
 	// was made for easier testing on a non production environment
 	if strings.ToLower(config.Env()) == "local" {

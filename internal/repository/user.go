@@ -158,3 +158,29 @@ func (r *userRepo) Update(ctx context.Context, user *model.User, tx *gorm.DB) er
 
 	return nil
 }
+
+func (r *userRepo) Search(ctx context.Context, input *model.SearchUserInput) ([]*model.User, error) {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func":  "userRepo.Search",
+		"input": helper.Dump(input),
+	})
+
+	query := r.db.WithContext(ctx)
+	if input.IncludeDeleted {
+		query = query.Unscoped()
+	}
+
+	where, conds := input.ToWhereQuery()
+	for i := 0; i < len(where); i++ {
+		query = query.Where(where[i], conds[i])
+	}
+
+	var users []*model.User
+	err := query.Limit(input.Limit).Offset(input.Offset).Order("created_at desc").Find(&users).Error
+	if err != nil {
+		logger.WithError(err).Error("failed to search user data from db")
+		return []*model.User{}, err
+	}
+
+	return users, nil
+}
