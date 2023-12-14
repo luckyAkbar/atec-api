@@ -412,6 +412,21 @@ func TestUserUsecase_VerifyAccount(t *testing.T) {
 				mockPinRepo.EXPECT().FindByID(ctx, input.PinValidationID).Times(1).Return(pin, nil)
 				mockSharedCryptor.EXPECT().CompareHash(gomock.Any(), []byte(input.Pin)).Times(1).Return(nil)
 				mockUserRepo.EXPECT().UpdateActiveStatus(ctx, pin.UserID, true).Times(1).Return(user, nil)
+				mockSharedCryptor.EXPECT().Decrypt(gomock.Any()).Return("decrypted", nil)
+			},
+			Run: func() {
+				okresp, _, err := uc.VerifyAccount(ctx, input)
+				assert.NoError(t, err.Type)
+				assert.Equal(t, okresp.IsActive, true)
+			},
+		},
+		{
+			Name: "ok - even if failed to decrypt",
+			MockFn: func() {
+				mockPinRepo.EXPECT().FindByID(ctx, input.PinValidationID).Times(1).Return(pin, nil)
+				mockSharedCryptor.EXPECT().CompareHash(gomock.Any(), []byte(input.Pin)).Times(1).Return(nil)
+				mockUserRepo.EXPECT().UpdateActiveStatus(ctx, pin.UserID, true).Times(1).Return(user, nil)
+				mockSharedCryptor.EXPECT().Decrypt(gomock.Any()).Return("", errors.New("err"))
 			},
 			Run: func() {
 				okresp, _, err := uc.VerifyAccount(ctx, input)
@@ -628,6 +643,102 @@ func TestUserUsecase_InitiateResetPassword(t *testing.T) {
 				assert.Equal(t, res.ID, targetUser.ID)
 				assert.Equal(t, res.Email, plainEmail)
 				assert.Equal(t, res.Username, targetUser.Username)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
+
+func TestUserUsecase_Search(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	ctx := context.Background()
+
+	mockUserRepo := mock.NewMockUserRepository(kit.Ctrl)
+	mockSharedCryptor := commonMock.NewMockSharedCryptor(kit.Ctrl)
+	uc := NewUserUsecase(mockUserRepo, nil, mockSharedCryptor, nil, nil)
+
+	trueVal := true
+
+	input := &model.SearchUserInput{
+		Username:       "username",
+		Email:          "email@test.com",
+		IsActive:       &trueVal,
+		IncludeDeleted: true,
+		Role:           model.RoleAdmin,
+		Limit:          10,
+		Offset:         10,
+	}
+	tests := []common.TestStructure{
+		{
+			Name: "repo err",
+			MockFn: func() {
+				mockUserRepo.EXPECT().Search(ctx, input).Times(1).Return(nil, errors.New("err db"))
+			},
+			Run: func() {
+				_, cerr := uc.Search(ctx, input)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrInternal)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
+			},
+		},
+		{
+			Name: "repo return 0 array",
+			MockFn: func() {
+				mockUserRepo.EXPECT().Search(ctx, input).Times(1).Return([]*model.User{}, nil)
+			},
+			Run: func() {
+				res, cerr := uc.Search(ctx, input)
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res.Count, 0)
+				assert.Equal(t, len(res.Users), 0)
+			},
+		},
+		{
+			Name: "ok",
+			MockFn: func() {
+				mockUserRepo.EXPECT().Search(ctx, input).Times(1).Return([]*model.User{
+					{
+						ID: uuid.New(),
+					},
+					{
+						ID: uuid.New(),
+					},
+				}, nil)
+				mockSharedCryptor.EXPECT().Decrypt(gomock.Any()).Times(2).Return("decrypted", nil)
+			},
+			Run: func() {
+				res, cerr := uc.Search(ctx, input)
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res.Count, 2)
+				assert.Equal(t, len(res.Users), 2)
+			},
+		},
+		{
+			Name: "wheh failed to decrypt, not causing error",
+			MockFn: func() {
+				mockUserRepo.EXPECT().Search(ctx, input).Times(1).Return([]*model.User{
+					{
+						ID: uuid.New(),
+					},
+					{
+						ID: uuid.New(),
+					},
+				}, nil)
+				mockSharedCryptor.EXPECT().Decrypt(gomock.Any()).Times(2).Return("", errors.New("err"))
+			},
+			Run: func() {
+				res, cerr := uc.Search(ctx, input)
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res.Count, 2)
+				assert.Equal(t, len(res.Users), 2)
 			},
 		},
 	}

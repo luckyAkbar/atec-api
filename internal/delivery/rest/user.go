@@ -96,3 +96,24 @@ func (s *service) handleInitiateResetUserPassword() echo.HandlerFunc {
 		}
 	}
 }
+
+func (s *service) handleSearchUsers() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		input := &model.SearchUserInput{}
+		if err := c.Bind(input); err != nil {
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil)
+		}
+
+		resp, custerr := s.userUsecase.Search(c.Request().Context(), input)
+		if custerr.Type != nil {
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, custerr.GenerateStdlibHTTPResponse(nil), nil)
+		}
+
+		return s.apiResponseGenerator.GenerateEchoAPIResponse(c, &stdhttp.StandardResponse{
+			Success: true,
+			Message: "success",
+			Status:  http.StatusOK,
+			Data:    resp,
+		}, nil)
+	}
+}

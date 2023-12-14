@@ -577,3 +577,120 @@ func TestRest_handleInitiateResetUserPassword(t *testing.T) {
 		})
 	}
 }
+
+func TestRest_handleSearchUsers(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockAPIRespGen := httpMock.NewMockAPIResponseGenerator(ctrl)
+	mockUserUc := mock.NewMockUserUsecase(ctrl)
+
+	tests := []common.TestStructure{
+		{
+			Name: "ok",
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					userUsecase:          mockUserUc,
+				}
+				req := httptest.NewRequest(http.MethodGet, "/users/", nil)
+				req.Header.Set("Content-Type", "application/json")
+
+				input := &model.SearchUserInput{
+					Role:   model.RoleAdmin,
+					Limit:  10,
+					Offset: 100,
+				}
+
+				resp := &model.SearchUserOutput{
+					Users: []*model.FindUserResponse{},
+					Count: 10,
+				}
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+				ectx.QueryParams().Add("limit", "10")
+				ectx.QueryParams().Add("offset", "100")
+				ectx.QueryParams().Add("role", "aDmiN")
+
+				mockUserUc.EXPECT().Search(ectx.Request().Context(), input).Times(1).Return(resp, &common.Error{Type: nil})
+
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, &stdhttp.StandardResponse{
+					Success: true,
+					Message: "success",
+					Status:  http.StatusOK,
+					Data:    resp,
+				}, nil)
+
+				err := restService.handleSearchUsers()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name: "input invalid",
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					userUsecase:          mockUserUc,
+				}
+				req := httptest.NewRequest(http.MethodGet, "/users/", nil)
+				req.Header.Set("Content-Type", "application/json")
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+
+				ectx.QueryParams().Add("role", "hamdeh.")
+
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil)
+
+				err := restService.handleSearchUsers()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name: "uc err",
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					userUsecase:          mockUserUc,
+				}
+				req := httptest.NewRequest(http.MethodGet, "/users/", nil)
+				req.Header.Set("Content-Type", "application/json")
+
+				input := &model.SearchUserInput{
+					Role:   model.RoleAdmin,
+					Limit:  10,
+					Offset: 100,
+				}
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+				ectx.QueryParams().Add("limit", "10")
+				ectx.QueryParams().Add("offset", "100")
+				ectx.QueryParams().Add("role", "aDmiN")
+
+				cerr := &common.Error{Type: usecase.ErrInternal}
+
+				mockUserUc.EXPECT().Search(ectx.Request().Context(), input).Times(1).Return(nil, cerr)
+
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, cerr.GenerateStdlibHTTPResponse(nil), nil)
+
+				err := restService.handleSearchUsers()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.Run()
+		})
+	}
+}

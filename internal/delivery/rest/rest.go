@@ -30,6 +30,7 @@ func NewService(rootGroup *echo.Group, apiResponseGenerator stdhttp.APIResponseG
 }
 
 func (s *service) initRoutes() {
+	s.rootGroup.GET("/users/", s.handleSearchUsers(), s.authMiddleware(true))
 	s.rootGroup.POST("/users/accounts/", s.handleSignUp())
 	s.rootGroup.POST("/users/accounts/validation/", s.handleAccountVerification())
 	s.rootGroup.PATCH("/users/accounts/:id/reset-password/", s.handleInitiateResetUserPassword(), s.authMiddleware(true))

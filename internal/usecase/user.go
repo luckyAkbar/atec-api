@@ -273,9 +273,14 @@ func (u *userUc) VerifyAccount(ctx context.Context, input *model.AccountVerifica
 		}
 	}
 
+	plainEmail, err := u.sharedCryptor.Decrypt(user.Email)
+	if err != nil {
+		logger.WithError(err).Error("failed to decrypt email, reporting and continue...")
+	}
+
 	return &model.SuccessAccountVerificationResponse{
 		ID:        user.ID,
-		Email:     user.Email,
+		Email:     plainEmail,
 		Username:  user.Username,
 		IsActive:  user.IsActive,
 		Role:      user.Role,
@@ -388,6 +393,38 @@ func (u *userUc) InitiateResetPassword(ctx context.Context, userID uuid.UUID) (*
 		ID:       user.ID,
 		Username: user.Username,
 		Email:    emailDec,
+	}, nilErr
+}
+
+func (u *userUc) Search(ctx context.Context, input *model.SearchUserInput) (*model.SearchUserOutput, *common.Error) {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func":  "userUc.Search",
+		"input": helper.Dump(input),
+	})
+
+	res, err := u.userRepo.Search(ctx, input)
+	if err != nil {
+		logger.WithError(err).Error("failed to search users data")
+		return nil, &common.Error{
+			Message: "failed to find users",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	}
+
+	response := []*model.FindUserResponse{}
+	for _, v := range res {
+		plainEmail, err := u.sharedCryptor.Decrypt(v.Email)
+		if err != nil {
+			logger.WithError(err).Error("failed to decrypt email, reporting and continue...")
+		}
+		response = append(response, v.ToRESTResponse(plainEmail))
+	}
+
+	return &model.SearchUserOutput{
+		Users: response,
+		Count: len(res),
 	}, nilErr
 }
 

@@ -52,6 +52,21 @@ func (mr *MockUserUsecaseMockRecorder) InitiateResetPassword(arg0, arg1 interfac
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitiateResetPassword", reflect.TypeOf((*MockUserUsecase)(nil).InitiateResetPassword), arg0, arg1)
 }
 
+// Search mocks base method.
+func (m *MockUserUsecase) Search(arg0 context.Context, arg1 *model.SearchUserInput) (*model.SearchUserOutput, *common.Error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Search", arg0, arg1)
+	ret0, _ := ret[0].(*model.SearchUserOutput)
+	ret1, _ := ret[1].(*common.Error)
+	return ret0, ret1
+}
+
+// Search indicates an expected call of Search.
+func (mr *MockUserUsecaseMockRecorder) Search(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Search", reflect.TypeOf((*MockUserUsecase)(nil).Search), arg0, arg1)
+}
+
 // SignUp mocks base method.
 func (m *MockUserUsecase) SignUp(arg0 context.Context, arg1 *model.SignUpInput) (*model.SignUpResponse, *common.Error) {
 	m.ctrl.T.Helper()

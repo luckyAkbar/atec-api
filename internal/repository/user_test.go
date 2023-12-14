@@ -436,3 +436,120 @@ func TestUserRepository_Update(t *testing.T) {
 		})
 	}
 }
+
+func TestSDUserRepository_Search(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	repo := NewUserRepository(kit.DB, nil)
+	ctx := context.Background()
+	mock := kit.DBmock
+
+	tests := []common.TestStructure{
+		{
+			Name: "ok - include deleted",
+			MockFn: func() {
+				mock.ExpectQuery(`SELECT .+ FROM "users"`).
+					WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(uuid.New()))
+			},
+			Run: func() {
+				res, err := repo.Search(ctx, &model.SearchUserInput{
+					IncludeDeleted: true,
+				})
+
+				assert.NoError(t, err)
+				assert.Equal(t, len(res), 1)
+			},
+		},
+		{
+			Name: "ok - exclude deleted",
+			MockFn: func() {
+				mock.ExpectQuery(`SELECT .+ FROM "users" .+ "users"."deleted_at" IS NULL .+`).
+					WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(uuid.New()))
+			},
+			Run: func() {
+				res, err := repo.Search(ctx, &model.SearchUserInput{
+					IncludeDeleted: false,
+				})
+
+				assert.NoError(t, err)
+				assert.Equal(t, len(res), 1)
+			},
+		},
+		{
+			Name: "ok1",
+			MockFn: func() {
+				mock.ExpectQuery(`SELECT .+ FROM "users" .+ "users"."deleted_at" IS NULL .+`).
+					WithArgs(model.RoleAdmin).
+					WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(uuid.New()))
+			},
+			Run: func() {
+				input := &model.SearchUserInput{
+					Role:           model.RoleAdmin,
+					IncludeDeleted: false,
+				}
+				res, err := repo.Search(ctx, input)
+
+				assert.NoError(t, err)
+				assert.Equal(t, len(res), 1)
+			},
+		},
+		{
+			Name: "ok2",
+			MockFn: func() {
+				mock.ExpectQuery(`SELECT .+ FROM "users"`).
+					WithArgs("%username%").
+					WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(uuid.New()))
+			},
+			Run: func() {
+				input := &model.SearchUserInput{
+					IncludeDeleted: true,
+					Username:       "username",
+				}
+				res, err := repo.Search(ctx, input)
+
+				assert.NoError(t, err)
+				assert.Equal(t, len(res), 1)
+			},
+		},
+		{
+			Name: "ok3",
+			MockFn: func() {
+				mock.ExpectQuery(`SELECT .+ FROM "users"`).
+					WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(uuid.New()))
+			},
+			Run: func() {
+				input := &model.SearchUserInput{
+					IncludeDeleted: true,
+					Limit:          10,
+				}
+				res, err := repo.Search(ctx, input)
+
+				assert.NoError(t, err)
+				assert.Equal(t, len(res), 1)
+			},
+		},
+		{
+			Name: "db err",
+			MockFn: func() {
+				mock.ExpectQuery(`SELECT .+ FROM "users"`).
+					WillReturnError(errors.New("err db"))
+			},
+			Run: func() {
+				input := &model.SearchUserInput{
+					Limit: 10,
+				}
+				_, err := repo.Search(ctx, input)
+
+				assert.Error(t, err)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
