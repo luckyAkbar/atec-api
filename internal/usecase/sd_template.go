@@ -166,6 +166,15 @@ func (uc *sdtUc) Update(ctx context.Context, id uuid.UUID, input *model.SDTempla
 		}
 	}
 
+	if template.IsActive {
+		return nil, &common.Error{
+			Message: "to ensure consistency, unable to update active template. Please disable it first",
+			Cause:   errors.New("unable to update template because already active"),
+			Code:    http.StatusForbidden,
+			Type:    ErrSDTemplateIsAlreadyActive,
+		}
+	}
+
 	template.UpdatedAt = time.Now().UTC()
 	template.Name = input.Name
 	template.Template = input
