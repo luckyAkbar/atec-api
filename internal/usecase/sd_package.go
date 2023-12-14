@@ -233,6 +233,15 @@ func (uc *sdpUc) Update(ctx context.Context, id uuid.UUID, input *model.SDPackag
 		}
 	}
 
+	if pack.IsActive {
+		return nil, &common.Error{
+			Message: "to ensure consistency, unable to update active template. Please disable it first",
+			Cause:   errors.New("unable to update package because already active"),
+			Code:    http.StatusForbidden,
+			Type:    ErrSDPackageAlreadyActive,
+		}
+	}
+
 	pack.UpdatedAt = time.Now().UTC()
 	pack.Name = input.PackageName
 	pack.TemplateID = input.TemplateID

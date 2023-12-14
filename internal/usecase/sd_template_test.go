@@ -346,6 +346,27 @@ func TestSDTemplateUsecase_Update(t *testing.T) {
 			},
 		},
 		{
+			Name: "template is already active",
+			MockFn: func() {
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, id, false).Times(1).Return(&model.SpeechDelayTemplate{
+					ID:        uuid.New(),
+					CreatedBy: uuid.New(),
+					Name:      "name",
+					IsActive:  true,
+					IsLocked:  false,
+					CreatedAt: now,
+					UpdatedAt: now,
+					Template:  input,
+				}, nil)
+			},
+			Run: func() {
+				_, cerr := uc.Update(ctx, id, input)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrSDTemplateIsAlreadyActive)
+				assert.Equal(t, cerr.Code, http.StatusForbidden)
+			},
+		},
+		{
 			Name: "failed to update",
 			MockFn: func() {
 				mockSDTemplateRepo.EXPECT().FindByID(ctx, id, false).Times(1).Return(tem, nil)

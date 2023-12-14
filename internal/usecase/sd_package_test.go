@@ -503,6 +503,19 @@ func TestSDPackageUsecase_Update(t *testing.T) {
 			},
 		},
 		{
+			Name: "package already active",
+			MockFn: func() {
+				mockSDTemplateRepo.EXPECT().FindByID(ctx, templateID, false).Times(1).Return(activeTem, nil)
+				mockSDPackageRepo.EXPECT().FindByID(ctx, packageID, false).Times(1).Return(&model.SpeechDelayPackage{IsLocked: false, IsActive: true}, nil)
+			},
+			Run: func() {
+				_, cerr := uc.Update(ctx, packageID, validInput)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrSDPackageAlreadyActive)
+				assert.Equal(t, cerr.Code, http.StatusForbidden)
+			},
+		},
+		{
 			Name: "failed to update",
 			MockFn: func() {
 				mockSDTemplateRepo.EXPECT().FindByID(ctx, templateID, false).Times(1).Return(activeTem, nil)
