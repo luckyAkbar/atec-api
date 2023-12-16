@@ -1448,3 +1448,165 @@ func TestRest_handleChangeSDPackageActivationStatus(t *testing.T) {
 		})
 	}
 }
+
+func TestRest_handleFindReadyToUsePackages(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockAPIRespGen := httpMock.NewMockAPIResponseGenerator(ctrl)
+	mockSDPackageUc := mock.NewMockSDPackageUsecase(ctrl)
+
+	tests := []common.TestStructure{
+		{
+			Name: "invalid query limit",
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					sdpackageUsecase:     mockSDPackageUc,
+				}
+				req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+				ectx.QueryParams().Add("limit", "apaan")
+
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil).Times(1).Return(nil)
+
+				err := restService.handleChangeSDPackageActivationStatus()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name: "invalid query offset",
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					sdpackageUsecase:     mockSDPackageUc,
+				}
+				req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+				ectx.QueryParams().Add("limit", "10")
+				ectx.QueryParams().Add("offset", "apaan")
+
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil).Times(1).Return(nil)
+
+				err := restService.handleFindReadyToUsePackages()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name: "uc return err internal",
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					sdpackageUsecase:     mockSDPackageUc,
+				}
+				req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+				ectx.QueryParams().Add("limit", "10")
+				ectx.QueryParams().Add("offset", "10")
+
+				mockSDPackageUc.EXPECT().FindReadyToUse(ectx.Request().Context(), 10, 10).Times(1).Return(nil, &common.Error{
+					Type: usecase.ErrInternal,
+				})
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, ErrInternal.GenerateStdlibHTTPResponse(nil), nil).Times(1).Return(nil)
+
+				err := restService.handleFindReadyToUsePackages()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name: "uc return specific error",
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					sdpackageUsecase:     mockSDPackageUc,
+				}
+				req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+				ectx.QueryParams().Add("limit", "10")
+				ectx.QueryParams().Add("offset", "10")
+
+				// just random error
+				cerr := &common.Error{
+					Message: "err uc",
+					Cause:   errors.New("err"),
+					Code:    http.StatusForbidden,
+					Type:    usecase.ErrSDTemplateCantBeActivated,
+				}
+
+				mockSDPackageUc.EXPECT().FindReadyToUse(ectx.Request().Context(), 10, 10).Times(1).Return(nil, cerr)
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, cerr.GenerateStdlibHTTPResponse(nil), nil).Times(1).Return(nil)
+
+				err := restService.handleFindReadyToUsePackages()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name: "uc return err internal",
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					sdpackageUsecase:     mockSDPackageUc,
+				}
+				req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+				ectx.QueryParams().Add("limit", "10")
+				ectx.QueryParams().Add("offset", "10")
+
+				res := &model.FindReadyToUseOutput{
+					Packages: []struct {
+						ID   uuid.UUID `json:"id"`
+						Name string    `json:"name"`
+					}{
+						{
+							ID:   uuid.New(),
+							Name: "name",
+						},
+					},
+					Count: 0,
+				}
+
+				mockSDPackageUc.EXPECT().FindReadyToUse(ectx.Request().Context(), 10, 10).Times(1).Return(res, &common.Error{
+					Type: nil,
+				})
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, &stdhttp.StandardResponse{
+					Success: true,
+					Message: "success",
+					Status:  http.StatusOK,
+					Data:    res,
+				}, nil).Times(1).Return(nil)
+
+				err := restService.handleFindReadyToUsePackages()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.Run()
+		})
+	}
+}

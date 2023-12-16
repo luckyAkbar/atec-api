@@ -1111,3 +1111,107 @@ func TestSDPackageUsecase_ChangeSDPackageActiveStatus(t *testing.T) {
 		})
 	}
 }
+
+func TestSDPackageUsecase_FindReadyToUse(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	ctx := context.Background()
+
+	mockSDPackageRepo := mock.NewMockSDPackageRepository(kit.Ctrl)
+	uc := NewSDPackageUsecase(mockSDPackageRepo, nil)
+
+	trueVal := true
+
+	tests := []common.TestStructure{
+		{
+			Name: "failed to find from db",
+			MockFn: func() {
+				mockSDPackageRepo.EXPECT().Search(ctx, &model.SearchSDPackageInput{
+					IsActive:       &trueVal,
+					IncludeDeleted: false,
+					Limit:          100,
+					Offset:         0,
+				}).Times(1).Return(nil, errors.New("db err"))
+			},
+			Run: func() {
+				_, cerr := uc.FindReadyToUse(ctx, 1000, -102129)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrInternal)
+			},
+		},
+		{
+			Name: "not found",
+			MockFn: func() {
+				mockSDPackageRepo.EXPECT().Search(ctx, &model.SearchSDPackageInput{
+					IsActive:       &trueVal,
+					IncludeDeleted: false,
+					Limit:          100,
+					Offset:         0,
+				}).Times(1).Return(nil, nil)
+			},
+			Run: func() {
+				res, cerr := uc.FindReadyToUse(ctx, 1000, -102129)
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res.Count, 0)
+				assert.Equal(t, len(res.Packages), 0)
+			},
+		},
+		{
+			Name: "not found 2",
+			MockFn: func() {
+				mockSDPackageRepo.EXPECT().Search(ctx, &model.SearchSDPackageInput{
+					IsActive:       &trueVal,
+					IncludeDeleted: false,
+					Limit:          100,
+					Offset:         0,
+				}).Times(1).Return([]*model.SpeechDelayPackage{}, nil)
+			},
+			Run: func() {
+				res, cerr := uc.FindReadyToUse(ctx, 1000, -102129)
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res.Count, 0)
+				assert.Equal(t, len(res.Packages), 0)
+			},
+		},
+		{
+			Name: "ok",
+			MockFn: func() {
+				mockSDPackageRepo.EXPECT().Search(ctx, &model.SearchSDPackageInput{
+					IsActive:       &trueVal,
+					IncludeDeleted: false,
+					Limit:          100,
+					Offset:         0,
+				}).Times(1).Return([]*model.SpeechDelayPackage{
+					{
+						ID:   uuid.New(),
+						Name: "okelah",
+					},
+					{
+						ID:   uuid.New(),
+						Name: "okelah1",
+					},
+					{
+						ID:   uuid.New(),
+						Name: "okelah2",
+					},
+				}, nil)
+			},
+			Run: func() {
+				res, cerr := uc.FindReadyToUse(ctx, 1000, 0)
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res.Count, 3)
+				assert.Equal(t, len(res.Packages), 3)
+				assert.Equal(t, res.Packages[0].Name, "okelah")
+				assert.Equal(t, res.Packages[2].Name, "okelah2")
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
