@@ -133,6 +133,7 @@ type AccessTokenRepository interface {
 	FindByToken(ctx context.Context, token string) (*AccessToken, error)
 	DeleteByID(ctx context.Context, id uuid.UUID) error
 	FindCredentialByToken(ctx context.Context, token string) (*AccessToken, *User, error)
+	DeleteByUserID(ctx context.Context, id uuid.UUID, tx *gorm.DB) error
 }
 
 // AuthUsecase auth usecase

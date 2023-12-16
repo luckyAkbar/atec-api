@@ -188,3 +188,59 @@ func TestEAccessTokenRepository_DeleteByID(t *testing.T) {
 		})
 	}
 }
+
+func TestAccessTokenRepository_DeleteByUserID(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	repo := NewAccessTokenRepository(kit.DB)
+	mock := kit.DBmock
+	ctx := context.Background()
+
+	at := &model.AccessToken{
+		ID:         uuid.New(),
+		Token:      "token",
+		UserID:     uuid.New(),
+		ValidUntil: time.Now().UTC().Add(time.Hour * 7),
+		CreatedAt:  time.Now().UTC(),
+		UpdatedAt:  time.Now().UTC(),
+	}
+
+	tests := []common.TestStructure{
+		{
+			Name: "ok",
+			MockFn: func() {
+				mock.ExpectBegin()
+				mock.ExpectExec(`^UPDATE "access_tokens" SET`).
+					WithArgs(sqlmock.AnyArg(), at.UserID).
+					WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectCommit()
+			},
+			Run: func() {
+				err := repo.DeleteByUserID(ctx, at.UserID, nil)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name: "err db",
+			MockFn: func() {
+				mock.ExpectBegin()
+				mock.ExpectExec(`^UPDATE "access_tokens" SET`).
+					WithArgs(sqlmock.AnyArg(), at.UserID).
+					WillReturnError(errors.New("db error"))
+				mock.ExpectRollback()
+			},
+			Run: func() {
+				err := repo.DeleteByUserID(ctx, at.UserID, nil)
+				assert.Error(t, err)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}

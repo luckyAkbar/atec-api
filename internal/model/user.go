@@ -66,7 +66,6 @@ func (u *User) ToRESTResponse(plainEmail string) *FindUserResponse {
 	return &FindUserResponse{
 		ID:        u.ID,
 		Email:     plainEmail,
-		Password:  u.Password,
 		Username:  u.Username,
 		IsActive:  u.IsActive,
 		Role:      u.Role,
@@ -80,7 +79,6 @@ func (u *User) ToRESTResponse(plainEmail string) *FindUserResponse {
 type FindUserResponse struct {
 	ID        uuid.UUID      `json:"id"`
 	Email     string         `json:"email"`
-	Password  string         `json:"password"`
 	Username  string         `json:"username"`
 	IsActive  bool           `json:"isActive"`
 	Role      Role           `json:"role"`
@@ -227,6 +225,7 @@ type UserUsecase interface {
 	VerifyAccount(ctx context.Context, input *AccountVerificationInput) (*SuccessAccountVerificationResponse, *FailedAccountVerificationResponse, *common.Error)
 	InitiateResetPassword(ctx context.Context, userID uuid.UUID) (*InitiateResetPasswordOutput, *common.Error)
 	Search(ctx context.Context, input *SearchUserInput) (*SearchUserOutput, *common.Error)
+	ChangeUserAccountActiveStatus(ctx context.Context, id uuid.UUID, status bool) (*FindUserResponse, *common.Error)
 }
 
 // UserRepository user's repository

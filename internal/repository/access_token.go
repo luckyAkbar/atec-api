@@ -108,3 +108,21 @@ func (r *accessTokenRepo) FindCredentialByToken(ctx context.Context, token strin
 
 	return &result.AccessToken, &result.User, nil
 }
+
+func (r *accessTokenRepo) DeleteByUserID(ctx context.Context, id uuid.UUID, tx *gorm.DB) error {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func": "accessTokenRepo.DeleteByUserID",
+		"data": helper.Dump(id),
+	})
+
+	if tx == nil {
+		tx = r.db
+	}
+
+	if err := tx.WithContext(ctx).Where("user_id = ?", id).Delete(&model.AccessToken{}).Error; err != nil {
+		logger.WithError(err).Error("failed to delete access token data from db")
+		return err
+	}
+
+	return nil
+}

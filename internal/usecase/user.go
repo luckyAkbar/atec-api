@@ -22,21 +22,23 @@ import (
 )
 
 type userUc struct {
-	userRepo      model.UserRepository
-	pinRepo       model.PinRepository
-	sharedCryptor common.SharedCryptor
-	emailUsecase  model.EmailUsecase
-	dbTrx         *gorm.DB
+	userRepo        model.UserRepository
+	pinRepo         model.PinRepository
+	sharedCryptor   common.SharedCryptor
+	emailUsecase    model.EmailUsecase
+	accessTokenRepo model.AccessTokenRepository
+	dbTrx           *gorm.DB
 }
 
 // NewUserUsecase create a new user usecase. Satisfy model.UserUsecase interface
-func NewUserUsecase(userRepo model.UserRepository, pinRepo model.PinRepository, sharedCryptor common.SharedCryptor, emailUsecase model.EmailUsecase, dbTrx *gorm.DB) model.UserUsecase {
+func NewUserUsecase(userRepo model.UserRepository, pinRepo model.PinRepository, sharedCryptor common.SharedCryptor, emailUsecase model.EmailUsecase, accessTokenRepo model.AccessTokenRepository, dbTrx *gorm.DB) model.UserUsecase {
 	return &userUc{
-		userRepo:      userRepo,
-		pinRepo:       pinRepo,
-		sharedCryptor: sharedCryptor,
-		emailUsecase:  emailUsecase,
-		dbTrx:         dbTrx,
+		userRepo:        userRepo,
+		pinRepo:         pinRepo,
+		sharedCryptor:   sharedCryptor,
+		emailUsecase:    emailUsecase,
+		accessTokenRepo: accessTokenRepo,
+		dbTrx:           dbTrx,
 	}
 }
 
@@ -426,6 +428,108 @@ func (u *userUc) Search(ctx context.Context, input *model.SearchUserInput) (*mod
 		Users: response,
 		Count: len(res),
 	}, nilErr
+}
+
+func (u *userUc) ChangeUserAccountActiveStatus(ctx context.Context, id uuid.UUID, status bool) (*model.FindUserResponse, *common.Error) {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func":   "userUc.ChangeUserAccountActiveStatus",
+		"status": status,
+	})
+
+	requester := model.GetUserFromCtx(ctx)
+	if requester.UserID == id {
+		return nil, &common.Error{
+			Message: "unable to change your own account status",
+			Cause:   errors.New("unable to change your own account status"),
+			Code:    http.StatusForbidden,
+			Type:    ErrForbiddenUpdateActiveStatus,
+		}
+	}
+
+	user, err := u.userRepo.FindByID(ctx, id)
+	switch err {
+	default:
+		logger.WithError(err).Error("failed to find user from db")
+		return nil, &common.Error{
+			Message: "failed to find user from db",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	case repository.ErrNotFound:
+		return nil, &common.Error{
+			Message: "user not found",
+			Cause:   err,
+			Code:    http.StatusNotFound,
+			Type:    ErrResourceNotFound,
+		}
+	case nil:
+		break
+	}
+
+	if user.Role == model.RoleAdmin {
+		return nil, &common.Error{
+			Message: "unable to change admin account status",
+			Cause:   errors.New("unable to change admin account status"),
+			Code:    http.StatusForbidden,
+			Type:    ErrForbiddenUpdateActiveStatus,
+		}
+	}
+
+	plainEmail, err := u.sharedCryptor.Decrypt(user.Email)
+	if err != nil {
+		logger.WithError(err).Error("failed to decrypt email, reporting and continue...")
+	}
+
+	// early return if already active/deactivated
+	if user.IsActive == status {
+		return user.ToRESTResponse(plainEmail), nilErr
+	}
+
+	if status {
+		user.IsActive = true
+		user.UpdatedAt = time.Now().UTC()
+		if err := u.userRepo.Update(ctx, user, nil); err != nil {
+			logger.WithError(err).Error("failed to activate user status")
+			return nil, &common.Error{
+				Message: "failed to update user status",
+				Cause:   err,
+				Code:    http.StatusInternalServerError,
+				Type:    ErrInternal,
+			}
+		}
+
+		return user.ToRESTResponse(plainEmail), nilErr
+	}
+
+	tx := u.dbTrx.Begin()
+
+	user.IsActive = false
+	user.UpdatedAt = time.Now().UTC()
+	if err := u.userRepo.Update(ctx, user, tx); err != nil {
+		tx.Rollback()
+		logger.WithError(err).Error("failed to update user data")
+		return nil, &common.Error{
+			Message: "failed to update user status",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	}
+
+	if err := u.accessTokenRepo.DeleteByUserID(ctx, user.ID, tx); err != nil {
+		tx.Rollback()
+		logger.WithError(err).Error("failed to delete user access token")
+		return nil, &common.Error{
+			Message: "failed to delete user access token",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	}
+
+	tx.Commit()
+	return user.ToRESTResponse(plainEmail), nilErr
 }
 
 func generatePinForOTP() string {

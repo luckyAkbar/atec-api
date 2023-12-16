@@ -37,6 +37,21 @@ func (m *MockUserUsecase) EXPECT() *MockUserUsecaseMockRecorder {
 	return m.recorder
 }
 
+// ChangeUserAccountActiveStatus mocks base method.
+func (m *MockUserUsecase) ChangeUserAccountActiveStatus(arg0 context.Context, arg1 uuid.UUID, arg2 bool) (*model.FindUserResponse, *common.Error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ChangeUserAccountActiveStatus", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*model.FindUserResponse)
+	ret1, _ := ret[1].(*common.Error)
+	return ret0, ret1
+}
+
+// ChangeUserAccountActiveStatus indicates an expected call of ChangeUserAccountActiveStatus.
+func (mr *MockUserUsecaseMockRecorder) ChangeUserAccountActiveStatus(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChangeUserAccountActiveStatus", reflect.TypeOf((*MockUserUsecase)(nil).ChangeUserAccountActiveStatus), arg0, arg1, arg2)
+}
+
 // InitiateResetPassword mocks base method.
 func (m *MockUserUsecase) InitiateResetPassword(arg0 context.Context, arg1 uuid.UUID) (*model.InitiateResetPasswordOutput, *common.Error) {
 	m.ctrl.T.Helper()

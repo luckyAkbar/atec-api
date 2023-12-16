@@ -694,3 +694,208 @@ func TestRest_handleSearchUsers(t *testing.T) {
 		})
 	}
 }
+
+func TestRest_handleChangeUserActivationStatus(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockAPIRespGen := httpMock.NewMockAPIResponseGenerator(ctrl)
+	mockUserUc := mock.NewMockUserUsecase(ctrl)
+
+	tests := []common.TestStructure{
+		{
+			Name:   "binding json failed",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					userUsecase:          mockUserUc,
+				}
+				req := httptest.NewRequest(http.MethodPatch, "/", strings.NewReader(`
+					{
+						"request": {
+							"activationStatus": true
+						}, <- invalid here
+						"signature": "ok"
+					}
+				`))
+				req.Header.Set("Content-Type", "application/json")
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+				id := uuid.New()
+				ectx.SetParamNames("id")
+				ectx.SetParamValues(id.String())
+
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil).Times(1).Return(nil)
+
+				err := restService.handleChangeUserActivationStatus()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name:   "pram id is invalid uuid",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					userUsecase:          mockUserUc,
+				}
+				req := httptest.NewRequest(http.MethodPatch, "/", strings.NewReader(`
+					{
+						"request": {
+							"activationStatus": true
+						},
+						"signature": "ok"
+					}
+				`))
+				req.Header.Set("Content-Type", "application/json")
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+				ectx.SetParamNames("id")
+				ectx.SetParamValues("invalid here")
+
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil).Times(1).Return(nil)
+
+				err := restService.handleChangeUserActivationStatus()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name:   "uc return internal error",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					userUsecase:          mockUserUc,
+				}
+				req := httptest.NewRequest(http.MethodPatch, "/", strings.NewReader(`
+					{
+						"request": {
+							"activationStatus": true
+						},
+						"signature": "ok"
+					}
+				`))
+				req.Header.Set("Content-Type", "application/json")
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+				id := uuid.New()
+				ectx.SetParamNames("id")
+				ectx.SetParamValues(id.String())
+
+				mockUserUc.EXPECT().ChangeUserAccountActiveStatus(ectx.Request().Context(), id, true).Times(1).Return(nil, &common.Error{
+					Type: usecase.ErrInternal,
+				})
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, ErrInternal.GenerateStdlibHTTPResponse(nil), nil).Times(1).Return(nil)
+
+				err := restService.handleChangeUserActivationStatus()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name:   "uc return specific error",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					userUsecase:          mockUserUc,
+				}
+				req := httptest.NewRequest(http.MethodPatch, "/", strings.NewReader(`
+					{
+						"request": {
+							"activationStatus": true
+						},
+						"signature": "ok"
+					}
+				`))
+				req.Header.Set("Content-Type", "application/json")
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+				id := uuid.New()
+				ectx.SetParamNames("id")
+				ectx.SetParamValues(id.String())
+
+				cerr := &common.Error{
+					Message: "err uc",
+					Cause:   errors.New("err"),
+					Type:    usecase.ErrForbiddenUpdateActiveStatus,
+					Code:    http.StatusForbidden,
+				}
+
+				mockUserUc.EXPECT().ChangeUserAccountActiveStatus(ectx.Request().Context(), id, true).Times(1).Return(nil, cerr)
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, cerr.GenerateStdlibHTTPResponse(nil), nil).Times(1).Return(nil)
+
+				err := restService.handleChangeUserActivationStatus()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name:   "ok",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					userUsecase:          mockUserUc,
+				}
+				req := httptest.NewRequest(http.MethodPatch, "/", strings.NewReader(`
+					{
+						"request": {
+							"activationStatus": true
+						},
+						"signature": "ok"
+					}
+				`))
+				req.Header.Set("Content-Type", "application/json")
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+				id := uuid.New()
+				ectx.SetParamNames("id")
+				ectx.SetParamValues(id.String())
+
+				cerr := &common.Error{
+					Type: nil,
+				}
+
+				user := &model.User{
+					ID: id,
+				}
+
+				mockUserUc.EXPECT().ChangeUserAccountActiveStatus(ectx.Request().Context(), id, true).Times(1).Return(user.ToRESTResponse("decrypted"), cerr)
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, &stdhttp.StandardResponse{
+					Success: true,
+					Message: "success",
+					Status:  http.StatusOK,
+					Data:    user.ToRESTResponse("decrypted"),
+				}, nil).Times(1).Return(nil)
+
+				err := restService.handleChangeUserActivationStatus()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}

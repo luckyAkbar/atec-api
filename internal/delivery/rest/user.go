@@ -117,3 +117,37 @@ func (s *service) handleSearchUsers() echo.HandlerFunc {
 		}, nil)
 	}
 }
+
+func (s *service) handleChangeUserActivationStatus() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		type body struct {
+			ActivationStatus bool `json:"activationStatus"`
+		}
+		input := struct {
+			Request   *body  `json:"request"`
+			Signature string `json:"signature"`
+		}{}
+
+		id := c.Param("id")
+		templateID, parsingErr := uuid.Parse(id)
+		if err := c.Bind(&input); err != nil || parsingErr != nil {
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil)
+		}
+
+		resp, custerr := s.userUsecase.ChangeUserAccountActiveStatus(c.Request().Context(), templateID, input.Request.ActivationStatus)
+		switch custerr.Type {
+		default:
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, custerr.GenerateStdlibHTTPResponse(nil), nil)
+		case usecase.ErrInternal:
+			logrus.WithContext(c.Request().Context()).WithError(custerr.Cause).Error("failed to update activation status user")
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrInternal.GenerateStdlibHTTPResponse(nil), nil)
+		case nil:
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, &stdhttp.StandardResponse{
+				Success: true,
+				Message: "success",
+				Status:  http.StatusOK,
+				Data:    resp,
+			}, nil)
+		}
+	}
+}

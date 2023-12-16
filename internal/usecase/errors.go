@@ -34,6 +34,9 @@ var (
 	// ErrInputResetPasswordInvalid is returned when input is invalid
 	ErrInputResetPasswordInvalid = errors.New("001006")
 
+	// ErrForbiddenUpdateActiveStatus will be returned when trying to update Admin status or self updating status
+	ErrForbiddenUpdateActiveStatus = errors.New("001007")
+
 	// ErrUserIsBlocked is returned when user is blocked to access this service
 	ErrUserIsBlocked = errors.New("002001")
 
