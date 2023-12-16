@@ -33,7 +33,7 @@ func TestUserUsecase_SignUp(t *testing.T) {
 
 	ctx := context.Background()
 
-	uc := NewUserUsecase(mockUserRepo, mockPinRepo, mockSharedCryptor, mockEmailUsecase, kit.DB)
+	uc := NewUserUsecase(mockUserRepo, mockPinRepo, mockSharedCryptor, mockEmailUsecase, nil, kit.DB)
 
 	validInput := &model.SignUpInput{
 		Username:            "okelah",
@@ -266,7 +266,7 @@ func TestUserUsecase_VerifyAccount(t *testing.T) {
 
 	ctx := context.Background()
 
-	uc := NewUserUsecase(mockUserRepo, mockPinRepo, mockSharedCryptor, mockEmailUsecase, kit.DB)
+	uc := NewUserUsecase(mockUserRepo, mockPinRepo, mockSharedCryptor, mockEmailUsecase, nil, kit.DB)
 
 	input := &model.AccountVerificationInput{
 		PinValidationID: uuid.New(),
@@ -498,7 +498,7 @@ func TestUserUsecase_InitiateResetPassword(t *testing.T) {
 	ctxAdmin := model.SetUserToCtx(ctx, admin)
 	ctxUser := model.SetUserToCtx(ctx, user)
 
-	uc := NewUserUsecase(mockUserRepo, mockPinRepo, mockSharedCryptor, mockEmailUsecase, kit.DB)
+	uc := NewUserUsecase(mockUserRepo, mockPinRepo, mockSharedCryptor, mockEmailUsecase, nil, kit.DB)
 
 	tests := []common.TestStructure{
 		{
@@ -663,7 +663,7 @@ func TestUserUsecase_Search(t *testing.T) {
 
 	mockUserRepo := mock.NewMockUserRepository(kit.Ctrl)
 	mockSharedCryptor := commonMock.NewMockSharedCryptor(kit.Ctrl)
-	uc := NewUserUsecase(mockUserRepo, nil, mockSharedCryptor, nil, nil)
+	uc := NewUserUsecase(mockUserRepo, nil, mockSharedCryptor, nil, nil, nil)
 
 	trueVal := true
 
@@ -739,6 +739,214 @@ func TestUserUsecase_Search(t *testing.T) {
 				assert.NoError(t, cerr.Type)
 				assert.Equal(t, res.Count, 2)
 				assert.Equal(t, len(res.Users), 2)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
+
+func TestUserUsecase_ChangeUserAccountActiveStatus(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	authUser := model.AuthUser{
+		UserID:      uuid.New(),
+		AccessToken: "token",
+		Role:        model.RoleAdmin,
+	}
+	ctx := model.SetUserToCtx(context.Background(), authUser)
+
+	dbmock := kit.DBmock
+
+	mockUserRepo := mock.NewMockUserRepository(kit.Ctrl)
+	mockSharedCryptor := commonMock.NewMockSharedCryptor(kit.Ctrl)
+	mockATRepo := mock.NewMockAccessTokenRepository(kit.Ctrl)
+	uc := NewUserUsecase(mockUserRepo, nil, mockSharedCryptor, nil, mockATRepo, kit.DB)
+
+	id := uuid.New()
+
+	tests := []common.TestStructure{
+		{
+			Name: "failed to find user",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindByID(ctx, id).Times(1).Return(nil, errors.New("err db"))
+			},
+			Run: func() {
+				_, cerr := uc.ChangeUserAccountActiveStatus(ctx, id, true)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrInternal)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
+			},
+		},
+		{
+			Name: "failed to find user",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindByID(ctx, id).Times(1).Return(nil, repository.ErrNotFound)
+			},
+			Run: func() {
+				_, cerr := uc.ChangeUserAccountActiveStatus(ctx, id, true)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrResourceNotFound)
+				assert.Equal(t, cerr.Code, http.StatusNotFound)
+			},
+		},
+		{
+			Name: "self update activation status",
+			MockFn: func() {
+			},
+			Run: func() {
+				_, cerr := uc.ChangeUserAccountActiveStatus(ctx, authUser.UserID, true)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrForbiddenUpdateActiveStatus)
+				assert.Equal(t, cerr.Code, http.StatusForbidden)
+			},
+		},
+		{
+			Name: "forbidden to update admin account status",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindByID(ctx, id).Times(1).Return(&model.User{ID: id, Role: model.RoleAdmin}, nil)
+			},
+			Run: func() {
+				_, cerr := uc.ChangeUserAccountActiveStatus(ctx, id, true)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrForbiddenUpdateActiveStatus)
+				assert.Equal(t, cerr.Code, http.StatusForbidden)
+			},
+		},
+		{
+			Name: "already active",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindByID(ctx, id).Times(1).Return(&model.User{ID: id, Email: "email", IsActive: true}, nil)
+				mockSharedCryptor.EXPECT().Decrypt("email").Times(1).Return("decrypted", nil)
+			},
+			Run: func() {
+				res, cerr := uc.ChangeUserAccountActiveStatus(ctx, id, true)
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res.ID, id)
+				assert.Equal(t, res.Email, "decrypted")
+			},
+		},
+		{
+			Name: "already deactivated",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindByID(ctx, id).Times(1).Return(&model.User{ID: id, Email: "email", IsActive: false}, nil)
+				mockSharedCryptor.EXPECT().Decrypt("email").Times(1).Return("decrypted", nil)
+			},
+			Run: func() {
+				res, cerr := uc.ChangeUserAccountActiveStatus(ctx, id, false)
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res.ID, id)
+				assert.Equal(t, res.Email, "decrypted")
+			},
+		},
+		{
+			Name: "already active - failed decrypt email",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindByID(ctx, id).Times(1).Return(&model.User{ID: id, Email: "email", IsActive: true}, nil)
+				mockSharedCryptor.EXPECT().Decrypt("email").Times(1).Return("", errors.New("err"))
+			},
+			Run: func() {
+				res, cerr := uc.ChangeUserAccountActiveStatus(ctx, id, true)
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res.ID, id)
+				assert.Equal(t, res.Email, "")
+			},
+		},
+		{
+			Name: "already deactivated - failed decrypt email",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindByID(ctx, id).Times(1).Return(&model.User{ID: id, Email: "email", IsActive: false}, nil)
+				mockSharedCryptor.EXPECT().Decrypt("email").Times(1).Return("", errors.New("err"))
+			},
+			Run: func() {
+				res, cerr := uc.ChangeUserAccountActiveStatus(ctx, id, false)
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res.ID, id)
+				assert.Equal(t, res.Email, "")
+			},
+		},
+		{
+			Name: "failed activating",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindByID(ctx, id).Times(1).Return(&model.User{ID: id, Email: "email", IsActive: false}, nil)
+				mockSharedCryptor.EXPECT().Decrypt("email").Times(1).Return("decrypted", nil)
+				mockUserRepo.EXPECT().Update(ctx, gomock.Any(), nil).Times(1).Return(errors.New("err db"))
+			},
+			Run: func() {
+				_, cerr := uc.ChangeUserAccountActiveStatus(ctx, id, true)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrInternal)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
+			},
+		},
+		{
+			Name: "success activating",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindByID(ctx, id).Times(1).Return(&model.User{ID: id, Email: "email", IsActive: false}, nil)
+				mockSharedCryptor.EXPECT().Decrypt("email").Times(1).Return("decrypted", nil)
+				mockUserRepo.EXPECT().Update(ctx, gomock.Any(), nil).Times(1).Return(nil)
+			},
+			Run: func() {
+				res, cerr := uc.ChangeUserAccountActiveStatus(ctx, id, true)
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res.ID, id)
+				assert.Equal(t, res.Email, "decrypted")
+			},
+		},
+		{
+			Name: "failed to update is active status",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindByID(ctx, id).Times(1).Return(&model.User{ID: id, Email: "email", IsActive: true}, nil)
+				mockSharedCryptor.EXPECT().Decrypt("email").Times(1).Return("decrypted", nil)
+				dbmock.ExpectBegin()
+				mockUserRepo.EXPECT().Update(ctx, gomock.Any(), gomock.Any()).Times(1).Return(errors.New("err db"))
+				dbmock.ExpectRollback()
+			},
+			Run: func() {
+				_, cerr := uc.ChangeUserAccountActiveStatus(ctx, id, false)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrInternal)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
+			},
+		},
+		{
+			Name: "failed to delete access token",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindByID(ctx, id).Times(1).Return(&model.User{ID: id, Email: "email", IsActive: true}, nil)
+				mockSharedCryptor.EXPECT().Decrypt("email").Times(1).Return("decrypted", nil)
+				dbmock.ExpectBegin()
+				mockUserRepo.EXPECT().Update(ctx, gomock.Any(), gomock.Any()).Times(1).Return(nil)
+				mockATRepo.EXPECT().DeleteByUserID(ctx, id, gomock.Any()).Times(1).Return(errors.New("err db"))
+				dbmock.ExpectRollback()
+			},
+			Run: func() {
+				_, cerr := uc.ChangeUserAccountActiveStatus(ctx, id, false)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrInternal)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
+			},
+		},
+		{
+			Name: "ok",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindByID(ctx, id).Times(1).Return(&model.User{ID: id, Email: "email", IsActive: true}, nil)
+				mockSharedCryptor.EXPECT().Decrypt("email").Times(1).Return("decrypted", nil)
+				dbmock.ExpectBegin()
+				mockUserRepo.EXPECT().Update(ctx, gomock.Any(), gomock.Any()).Times(1).Return(nil)
+				mockATRepo.EXPECT().DeleteByUserID(ctx, id, gomock.Any()).Times(1).Return(nil)
+				dbmock.ExpectCommit()
+			},
+			Run: func() {
+				res, cerr := uc.ChangeUserAccountActiveStatus(ctx, id, false)
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res.ID, id)
+				assert.Equal(t, res.Email, "decrypted")
 			},
 		},
 	}

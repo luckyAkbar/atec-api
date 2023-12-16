@@ -11,6 +11,7 @@ import (
 	gomock "github.com/golang/mock/gomock"
 	uuid "github.com/google/uuid"
 	model "github.com/luckyAkbar/atec-api/internal/model"
+	gorm "gorm.io/gorm"
 )
 
 // MockAccessTokenRepository is a mock of AccessTokenRepository interface.
@@ -62,6 +63,20 @@ func (m *MockAccessTokenRepository) DeleteByID(arg0 context.Context, arg1 uuid.U
 func (mr *MockAccessTokenRepositoryMockRecorder) DeleteByID(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteByID", reflect.TypeOf((*MockAccessTokenRepository)(nil).DeleteByID), arg0, arg1)
+}
+
+// DeleteByUserID mocks base method.
+func (m *MockAccessTokenRepository) DeleteByUserID(arg0 context.Context, arg1 uuid.UUID, arg2 *gorm.DB) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteByUserID", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteByUserID indicates an expected call of DeleteByUserID.
+func (mr *MockAccessTokenRepositoryMockRecorder) DeleteByUserID(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteByUserID", reflect.TypeOf((*MockAccessTokenRepository)(nil).DeleteByUserID), arg0, arg1, arg2)
 }
 
 // FindByToken mocks base method.
