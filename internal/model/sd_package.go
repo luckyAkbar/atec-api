@@ -316,6 +316,15 @@ type SearchPackageOutput struct {
 	Count    int                   `json:"count"`
 }
 
+// FindReadyToUseOutput output for find ready to use package
+type FindReadyToUseOutput struct {
+	Packages []struct {
+		ID   uuid.UUID `json:"id"`
+		Name string    `json:"name"`
+	} `json:"packages"`
+	Count int `json:"count"`
+}
+
 // SDPackageUsecase interface for SD package usecase
 type SDPackageUsecase interface {
 	Create(ctx context.Context, input *SDPackage) (*GeneratedSDPackage, *common.Error)
@@ -325,6 +334,7 @@ type SDPackageUsecase interface {
 	Delete(ctx context.Context, id uuid.UUID) (*GeneratedSDPackage, *common.Error)
 	UndoDelete(ctx context.Context, id uuid.UUID) (*GeneratedSDPackage, *common.Error)
 	ChangeSDPackageActiveStatus(ctx context.Context, id uuid.UUID, isActive bool) (*GeneratedSDPackage, *common.Error)
+	FindReadyToUse(ctx context.Context, limit, offset int) (*FindReadyToUseOutput, *common.Error)
 }
 
 // SDPackageRepository interface for SD package repository

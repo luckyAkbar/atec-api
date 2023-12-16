@@ -97,6 +97,21 @@ func (mr *MockSDPackageUsecaseMockRecorder) FindByID(arg0, arg1 interface{}) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByID", reflect.TypeOf((*MockSDPackageUsecase)(nil).FindByID), arg0, arg1)
 }
 
+// FindReadyToUse mocks base method.
+func (m *MockSDPackageUsecase) FindReadyToUse(arg0 context.Context, arg1, arg2 int) (*model.FindReadyToUseOutput, *common.Error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindReadyToUse", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*model.FindReadyToUseOutput)
+	ret1, _ := ret[1].(*common.Error)
+	return ret0, ret1
+}
+
+// FindReadyToUse indicates an expected call of FindReadyToUse.
+func (mr *MockSDPackageUsecaseMockRecorder) FindReadyToUse(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindReadyToUse", reflect.TypeOf((*MockSDPackageUsecase)(nil).FindReadyToUse), arg0, arg1, arg2)
+}
+
 // Search mocks base method.
 func (m *MockSDPackageUsecase) Search(arg0 context.Context, arg1 *model.SearchSDPackageInput) (*model.SearchPackageOutput, *common.Error) {
 	m.ctrl.T.Helper()
