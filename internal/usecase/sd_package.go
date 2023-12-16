@@ -468,3 +468,60 @@ func (uc *sdpUc) ChangeSDPackageActiveStatus(ctx context.Context, id uuid.UUID, 
 
 	return pack.ToRESTResponse(), nilErr
 }
+
+func (uc *sdpUc) FindReadyToUse(ctx context.Context, limit, offset int) (*model.FindReadyToUseOutput, *common.Error) {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func":   "sdpUc.FindReadyToUse",
+		"limit":  limit,
+		"offset": offset,
+	})
+
+	if limit <= 0 || limit > 100 {
+		limit = 100
+	}
+
+	if offset < 0 {
+		offset = 0
+	}
+
+	trueVal := true
+	packages, err := uc.sdpRepo.Search(ctx, &model.SearchSDPackageInput{
+		IsActive:       &trueVal,
+		IncludeDeleted: false,
+		Limit:          limit,
+		Offset:         offset,
+	})
+	if err != nil {
+		logger.WithError(err).Error("failed to find ready to use sd packages")
+		return nil, &common.Error{
+			Message: "failed to find ready to use sd packages",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	}
+
+	if len(packages) == 0 {
+		return &model.FindReadyToUseOutput{
+			Packages: []struct {
+				ID   uuid.UUID `json:"id"`
+				Name string    `json:"name"`
+			}{},
+			Count: 0,
+		}, nilErr
+	}
+
+	resp := &model.FindReadyToUseOutput{}
+	for _, pack := range packages {
+		resp.Packages = append(resp.Packages, struct {
+			ID   uuid.UUID "json:\"id\""
+			Name string    "json:\"name\""
+		}{
+			ID:   pack.ID,
+			Name: pack.Name,
+		})
+	}
+
+	resp.Count = len(packages)
+	return resp, nilErr
+}
