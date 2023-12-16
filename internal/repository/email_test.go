@@ -174,7 +174,7 @@ func TestEmailRepository_Update(t *testing.T) {
 				mock.ExpectExec(`^UPDATE "emails" SET`).
 					WithArgs(e.Subject, e.Body, e.To, e.Cc, e.Bcc, e.SentAt, e.ClientSignature, e.Metadata, e.CreatedAt, sqlmock.AnyArg(), e.DeletedAt, e.ID).
 					WillReturnError(errors.New("db error"))
-				mock.ExpectCommit()
+				mock.ExpectRollback()
 			},
 			Run: func() {
 				err := repo.Update(ctx, e)
