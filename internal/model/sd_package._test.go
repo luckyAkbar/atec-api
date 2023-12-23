@@ -1328,7 +1328,7 @@ func TestModel_SDPackage_FullValidation(t *testing.T) {
 											Value: 3,
 										},
 										{
-											Text:  "pilihan ketigax",
+											Text:  "pilihan keempats",
 											Value: 4, // here is jumping value. should be 3 and must cause error on validation
 										},
 									},
@@ -1441,7 +1441,7 @@ func TestModel_SDPackage_FullValidation(t *testing.T) {
 											Value: 4,
 										},
 										{
-											Text:  "pilihan keempats",
+											Text:  "pilihan kelimaax",
 											Value: 99,
 										},
 									},
@@ -1462,12 +1462,12 @@ func TestModel_SDPackage_FullValidation(t *testing.T) {
 											Value: 2,
 										},
 										{
-											Text:  "pilihan ketigax",
-											Value: 5, // here is jumping value. should be 3 and must cause error on validation
+											Text:  "pilihan kelimax",
+											Value: 5,
 										},
 										{
-											Text:  "pilihan ketigax",
-											Value: 4, // here is jumping value. should be 3 and must cause error on validation
+											Text:  "pilihan keepmats",
+											Value: 4,
 										},
 									},
 								},

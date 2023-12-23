@@ -109,6 +109,12 @@ internal/model/mock_sd_package_usecase.go:
 internal/model/mock_sd_package_repository.go:
 	mockgen -destination=internal/model/mock/mock_sd_package_repository.go -package=mock github.com/luckyAkbar/atec-api/internal/model SDPackageRepository
 
+internal/model/mock_sdt_usecase.go:
+	mockgen -destination=internal/model/mock/mock_sdt_usecase.go -package=mock github.com/luckyAkbar/atec-api/internal/model SDTestUsecase
+
+internal/model/mock_sdt_repository.go:
+	mockgen -destination=internal/model/mock/mock_sdt_repository.go -package=mock github.com/luckyAkbar/atec-api/internal/model SDTestRepository
+
 mockgen: clean \
 	internal/model/mock/mock_email_usecase.go \
 	internal/model/mock/mock_email_repository.go \
@@ -123,7 +129,9 @@ mockgen: clean \
 	internal/model/mock_sd_template_usecase.go \
 	internal/model/mock_sd_template_repository.go \
 	internal/model/mock_sd_package_usecase.go \
-	internal/model/mock_sd_package_repository.go
+	internal/model/mock_sd_package_repository.go \
+	internal/model/mock_sdt_usecase.go \
+	internal/model/mock_sdt_repository.go
 
 clean:
 	find -type f -name 'mock_*.go' -delete

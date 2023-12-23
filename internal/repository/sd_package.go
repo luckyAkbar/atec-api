@@ -2,11 +2,13 @@ package repository
 
 import (
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
 	"github.com/luckyAkbar/atec-api/internal/model"
 	"github.com/sirupsen/logrus"
 	"github.com/sweet-go/stdlib/helper"
+	"golang.org/x/exp/slices"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -135,4 +137,108 @@ func (r *sdpRepo) UndoDelete(ctx context.Context, id uuid.UUID) (*model.SpeechDe
 	}
 
 	return pack, nil
+}
+
+func (r *sdpRepo) FindRandomActivePackage(ctx context.Context) (*model.SpeechDelayPackage, error) {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func": "sdpRepo.FindRandomActivePackage",
+	})
+
+	pack := &model.SpeechDelayPackage{}
+	err := r.db.WithContext(ctx).
+		Order("RANDOM()").
+		Limit(1).
+		Take(pack, "is_active = ?", true).Error
+	switch err {
+	default:
+		logger.WithError(err).Error("failed to find random active package")
+		return nil, err
+	case gorm.ErrRecordNotFound:
+		return nil, ErrNotFound
+	case nil:
+		return pack, nil
+	}
+}
+
+type testPackageCount struct {
+	PackageID uuid.UUID `gorm:"column:package_id"`
+	Count     int       `gorm:"column:count"`
+}
+
+func (r *sdpRepo) FindLeastUsedPackageIDByUserID(ctx context.Context, userID uuid.UUID) (uuid.UUID, error) {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func":  "sdpRepo.FindLeastUsedPackageIDByUserID",
+		"input": helper.Dump(userID),
+	})
+
+	var activePackageIDs []uuid.UUID
+	err := r.db.WithContext(ctx).Model(&model.SpeechDelayPackage{}).
+		Select("id").
+		Where("is_active = ?", true).
+		Scan(&activePackageIDs).Error
+	switch err {
+	default:
+		logger.WithError(err).Error("failed to find active sd package")
+		return uuid.Nil, err
+	case gorm.ErrRecordNotFound:
+		return uuid.Nil, ErrNotFound
+	case nil:
+		if len(activePackageIDs) == 0 {
+			return uuid.Nil, ErrNotFound
+		}
+	}
+
+	var tpc []testPackageCount
+	err = r.db.WithContext(ctx).
+		Model(&model.SDTest{}).
+		Where("user_id = ?", userID).
+		Select("package_id, count(package_id) as count").
+		Group("package_id").
+		Scan(&tpc).Error
+	switch err {
+	default:
+		logger.WithError(err).Error("failed to find sd test result")
+		return uuid.Nil, err
+	case gorm.ErrRecordNotFound:
+		return uuid.Nil, ErrNotFound
+	case nil:
+		break
+	}
+
+	// here we will find a package id that doesn't exists in
+	// the ids listed in tpc
+	// if not found, it means the user never used that, so return the id immediatly
+	for _, v := range activePackageIDs {
+		found := false
+		for _, x := range tpc {
+			if v == x.PackageID {
+				found = true
+			}
+		}
+
+		if !found {
+			return v, nil
+		}
+	}
+
+	return findTheLeastUsedPackage(tpc)
+}
+
+// will be used to find the least used package
+// originally made to reduce the code complexity in order to pass the linter
+func findTheLeastUsedPackage(tpc []testPackageCount) (uuid.UUID, error) {
+	// here we will find the least used package by user
+	arr := []int{}
+	for _, v := range tpc {
+		arr = append(arr, v.Count)
+	}
+
+	min := slices.Min(arr)
+	for _, v := range tpc {
+		if v.Count == min {
+			return v.PackageID, nil
+		}
+	}
+
+	return uuid.Nil, errors.New("unexpected error when trying to find least used package")
 }

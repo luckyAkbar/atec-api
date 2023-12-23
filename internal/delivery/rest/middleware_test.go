@@ -278,3 +278,45 @@ func TestRest_authMiddleware(t *testing.T) {
 		})
 	}
 }
+
+func TestRest_allowUnauthorizedAccess(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockAuthUc := mock.NewMockAuthUsecase(ctrl)
+	mockAPIRespGen := httpMock.NewMockAPIResponseGenerator(ctrl)
+
+	s := &service{
+		authUsecase:          mockAuthUc,
+		apiResponseGenerator: mockAPIRespGen,
+	}
+
+	tests := []common.TestStructure{
+		{
+			Name:   "token empty,",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				req := httptest.NewRequest(http.MethodPost, "/", nil)
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+
+				fn := func(c echo.Context) error {
+					authUser := model.GetUserFromCtx(c.Request().Context())
+					assert.Nil(t, authUser)
+
+					return c.JSON(http.StatusOK, `{"message": "ok"}`)
+				}
+
+				err := s.allowUnauthorizedAccess()(fn)(ectx)
+				assert.NoError(t, err)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
