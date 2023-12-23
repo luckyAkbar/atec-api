@@ -52,6 +52,19 @@ func (s *service) authMiddleware(adminOnly bool) echo.MiddlewareFunc {
 	}
 }
 
+func (s *service) allowUnauthorizedAccess() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			token := getAccessToken(c.Request())
+			if token == "" {
+				return next(c)
+			}
+
+			return s.authMiddleware(false)(next)(c)
+		}
+	}
+}
+
 func getAccessToken(req *http.Request) (accessToken string) {
 	authHeaders := strings.Split(req.Header.Get("Authorization"), " ")
 
