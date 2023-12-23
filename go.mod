@@ -21,6 +21,7 @@ require (
 	github.com/stretchr/testify v1.8.2
 	github.com/sweet-go/stdlib v1.2.1-0.20231129072459-a75600e4a037
 	golang.org/x/crypto v0.7.0
+	golang.org/x/exp v0.0.0-20231219180239-dc181d75b848
 	golang.org/x/time v0.3.0
 	gopkg.in/guregu/null.v4 v4.0.0
 	gorm.io/driver/postgres v1.5.0
