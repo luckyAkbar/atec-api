@@ -26,6 +26,17 @@ type SDQuestionAndAnswers struct {
 	AnswersAndValue []SDAnswerAndValue `json:"answerAndValue" validate:"required,min=1,unique=Value,dive"`
 }
 
+// QuestionAndAnswers will return the SDTestQuestion
+func (sdq SDQuestionAndAnswers) QuestionAndAnswers() SDTestQuestion {
+	result := SDTestQuestion{}
+	result.Question = sdq.Question
+	for _, a := range sdq.AnswersAndValue {
+		result.Answers = append(result.Answers, a.Text)
+	}
+
+	return result
+}
+
 // SDSubGroupDetail sd sub group detail
 type SDSubGroupDetail struct {
 	Name                   string                 `json:"name" validate:"required"`
@@ -37,6 +48,26 @@ type SDPackage struct {
 	PackageName     string             `json:"packageName" validate:"required"`
 	TemplateID      uuid.UUID          `json:"templateID" validate:"required"`
 	SubGroupDetails []SDSubGroupDetail `json:"subGroupDetails" validate:"required,min=1,unique=Name,dive"`
+}
+
+// SDTestQuestion test question and the answer options
+type SDTestQuestion struct {
+	Question string   `json:"question"`
+	Answers  []string `json:"answers"`
+}
+
+// RenderTestQuestions will return the sd test question per group
+func (sdp *SDPackage) RenderTestQuestions() map[string][]SDTestQuestion {
+	result := make(map[string][]SDTestQuestion)
+
+	for _, s := range sdp.SubGroupDetails {
+		for _, q := range s.QuestionAndAnswerLists {
+			result[s.Name] = append(result[s.Name], q.QuestionAndAnswers())
+		}
+	}
+
+	return result
+
 }
 
 // PartialValidation will validate the SD Package. enough to be used for first time creating / just updating the SD Template
@@ -345,4 +376,6 @@ type SDPackageRepository interface {
 	Update(ctx context.Context, pack *SpeechDelayPackage, tx *gorm.DB) error
 	Delete(ctx context.Context, id uuid.UUID) (*SpeechDelayPackage, error)
 	UndoDelete(ctx context.Context, id uuid.UUID) (*SpeechDelayPackage, error)
+	FindLeastUsedPackageIDByUserID(ctx context.Context, userID uuid.UUID) (uuid.UUID, error)
+	FindRandomActivePackage(ctx context.Context) (*SpeechDelayPackage, error)
 }

@@ -72,7 +72,6 @@ func TestSDPackageRepository_Create(t *testing.T) {
 			tt.Run()
 		})
 	}
-
 }
 
 func TestSDPackageRepository_FindByID(t *testing.T) {
@@ -438,6 +437,208 @@ func TestSDPackageRepository_UndoDelete(t *testing.T) {
 			Run: func() {
 				_, err := repo.UndoDelete(ctx, p.ID)
 				assert.Error(t, err)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
+
+func TestSDPackageRepository_FindRandomActivePackage(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	repo := NewSDPackageRepository(kit.DB)
+	ctx := context.Background()
+	mock := kit.DBmock
+
+	now := time.Now().UTC()
+	pack := &model.SpeechDelayPackage{
+		ID:         uuid.NameSpaceDNS,
+		TemplateID: uuid.New(),
+		Name:       "name",
+		CreatedBy:  uuid.New(),
+		Package:    &model.SDPackage{},
+		IsActive:   false,
+		IsLocked:   false,
+		CreatedAt:  now,
+		UpdatedAt:  now,
+	}
+
+	tests := []common.TestStructure{
+		{
+			Name: "ok",
+			MockFn: func() {
+				mock.ExpectQuery(`^SELECT .+ FROM "test_packages" WHERE`).
+					WithArgs(true).
+					WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(pack.ID))
+			},
+			Run: func() {
+				res, err := repo.FindRandomActivePackage(ctx)
+				assert.NoError(t, err)
+				assert.Equal(t, res.ID, pack.ID)
+			},
+		},
+		{
+			Name: "not found",
+			MockFn: func() {
+				mock.ExpectQuery(`^SELECT .+ FROM "test_packages" WHERE`).
+					WithArgs(true).
+					WillReturnError(gorm.ErrRecordNotFound)
+			},
+			Run: func() {
+				_, err := repo.FindRandomActivePackage(ctx)
+				assert.Error(t, err)
+				assert.Equal(t, err, ErrNotFound)
+			},
+		},
+		{
+			Name: "not found",
+			MockFn: func() {
+				mock.ExpectQuery(`^SELECT .+ FROM "test_packages" WHERE`).
+					WithArgs(true).
+					WillReturnError(errors.New("err db"))
+			},
+			Run: func() {
+				_, err := repo.FindRandomActivePackage(ctx)
+				assert.Error(t, err)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
+
+func TestSDPackage_FindLeastUsedPackageIDByUserID(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	repo := NewSDPackageRepository(kit.DB)
+	ctx := context.Background()
+	mock := kit.DBmock
+
+	userID := uuid.New()
+	unusedPackageID := uuid.New()
+	leastUsedPackageID := uuid.New()
+	usedPackageID1 := uuid.New()
+	usedPackageID2 := uuid.New()
+	usedPackageID3 := uuid.New()
+
+	tests := []common.TestStructure{
+		{
+			Name: "failed when trying to find active package",
+			MockFn: func() {
+				mock.ExpectQuery(`^SELECT "id" FROM "test_packages" WHERE is_active`).
+					WillReturnError(errors.New("err"))
+			},
+			Run: func() {
+				_, err := repo.FindLeastUsedPackageIDByUserID(ctx, userID)
+				assert.Error(t, err)
+			},
+		},
+		{
+			Name: "returning error not found",
+			MockFn: func() {
+				mock.ExpectQuery(`^SELECT "id" FROM "test_packages" WHERE is_active`).
+					WithArgs(true).
+					WillReturnError(gorm.ErrRecordNotFound)
+			},
+			Run: func() {
+				_, err := repo.FindLeastUsedPackageIDByUserID(ctx, userID)
+				assert.Error(t, err)
+				assert.Equal(t, err, ErrNotFound)
+			},
+		},
+		{
+			Name: "if no rows found, must return err not found",
+			MockFn: func() {
+				mock.ExpectQuery(`^SELECT "id" FROM "test_packages" WHERE is_active`).
+					WithArgs(true).
+					WillReturnRows(sqlmock.NewRows([]string{"id"}))
+			},
+			Run: func() {
+				_, err := repo.FindLeastUsedPackageIDByUserID(ctx, userID)
+				assert.Error(t, err)
+				assert.Equal(t, err, ErrNotFound)
+			},
+		},
+		{
+			Name: "failed to find history test result",
+			MockFn: func() {
+				mock.ExpectQuery(`^SELECT "id" FROM "test_packages" WHERE is_active`).
+					WithArgs(true).
+					WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(uuid.New()))
+				mock.ExpectQuery(`^SELECT .+ FROM "test_results"`).
+					WithArgs(userID).
+					WillReturnError(errors.New("err db"))
+			},
+			Run: func() {
+				_, err := repo.FindLeastUsedPackageIDByUserID(ctx, userID)
+				assert.Error(t, err)
+			},
+		},
+		{
+			Name: "error not found",
+			MockFn: func() {
+				mock.ExpectQuery(`^SELECT "id" FROM "test_packages" WHERE is_active`).
+					WithArgs(true).
+					WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(uuid.New()))
+				mock.ExpectQuery(`^SELECT .+ FROM "test_results"`).
+					WithArgs(userID).
+					WillReturnError(gorm.ErrRecordNotFound)
+			},
+			Run: func() {
+				_, err := repo.FindLeastUsedPackageIDByUserID(ctx, userID)
+				assert.Error(t, err)
+				assert.Equal(t, err, ErrNotFound)
+			},
+		},
+		{
+			Name: "active package id was found and never used by user",
+			MockFn: func() {
+				mock.ExpectQuery(`^SELECT "id" FROM "test_packages" WHERE is_active`).
+					WithArgs(true).
+					WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(unusedPackageID))
+				mock.ExpectQuery(`^SELECT .+ FROM "test_results"`).
+					WithArgs(userID).
+					WillReturnRows(sqlmock.NewRows([]string{"package_id", "count"}).AddRow(uuid.New(), 1))
+			},
+			Run: func() {
+				res, err := repo.FindLeastUsedPackageIDByUserID(ctx, userID)
+				assert.NoError(t, err)
+				assert.Equal(t, res, unusedPackageID)
+			},
+		},
+		{
+			Name: "returning the least used package count",
+			MockFn: func() {
+				mock.ExpectQuery(`^SELECT "id" FROM "test_packages" WHERE is_active`).
+					WithArgs(true).
+					WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(usedPackageID1).AddRow(usedPackageID2).AddRow(usedPackageID3))
+				mock.ExpectQuery(`^SELECT .+ FROM "test_results"`).
+					WithArgs(userID).
+					WillReturnRows(sqlmock.NewRows(
+						[]string{"package_id", "count"}).
+						AddRow(usedPackageID1, 10).
+						AddRow(usedPackageID2, 1029).
+						AddRow(usedPackageID3, 1229).
+						AddRow(leastUsedPackageID, 1),
+					)
+			},
+			Run: func() {
+				res, err := repo.FindLeastUsedPackageIDByUserID(ctx, userID)
+				assert.NoError(t, err)
+				assert.Equal(t, res, leastUsedPackageID)
 			},
 		},
 	}

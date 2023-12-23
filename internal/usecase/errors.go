@@ -87,6 +87,9 @@ var (
 
 	// ErrSDPackageAlreadyActive will be returned if trying to update an active sd package
 	ErrSDPackageAlreadyActive = errors.New("004004")
+
+	// ErrSDPackageAlreadyDeactivated will be returned when the sd package is inactive
+	ErrSDPackageAlreadyDeactivated = errors.New("004005")
 )
 
 var nilErr = &common.Error{

@@ -13,10 +13,11 @@ type service struct {
 	authUsecase          model.AuthUsecase
 	sdtemplateUsecase    model.SDTemplateUsecase
 	sdpackageUsecase     model.SDPackageUsecase
+	sdtestUsecase        model.SDTestUsecase
 }
 
 // NewService will create http service and register all of it's routes
-func NewService(rootGroup *echo.Group, apiResponseGenerator stdhttp.APIResponseGenerator, userUsecase model.UserUsecase, authUsecase model.AuthUsecase, sdtemplateUsecase model.SDTemplateUsecase, sdpackageUsecase model.SDPackageUsecase) {
+func NewService(rootGroup *echo.Group, apiResponseGenerator stdhttp.APIResponseGenerator, userUsecase model.UserUsecase, authUsecase model.AuthUsecase, sdtemplateUsecase model.SDTemplateUsecase, sdpackageUsecase model.SDPackageUsecase, sdtestUsecase model.SDTestUsecase) {
 	s := &service{
 		rootGroup:            rootGroup,
 		apiResponseGenerator: apiResponseGenerator,
@@ -24,6 +25,7 @@ func NewService(rootGroup *echo.Group, apiResponseGenerator stdhttp.APIResponseG
 		authUsecase:          authUsecase,
 		sdtemplateUsecase:    sdtemplateUsecase,
 		sdpackageUsecase:     sdpackageUsecase,
+		sdtestUsecase:        sdtestUsecase,
 	}
 
 	s.initRoutes()
@@ -57,4 +59,6 @@ func (s *service) initRoutes() {
 	s.rootGroup.DELETE("/sdt/packages/:id/", s.handleDeleteSDPackage(), s.authMiddleware(true))
 	s.rootGroup.PATCH("/sdt/packages/:id/", s.handleUndoDeleteSDPackage(), s.authMiddleware(true))
 	s.rootGroup.PATCH("/sdt/packages/:id/activation-status/", s.handleChangeSDPackageActivationStatus(), s.authMiddleware(true))
+
+	s.rootGroup.POST("/sdt/tests/", s.handleInitiateSDTest(), s.allowUnauthorizedAccess())
 }

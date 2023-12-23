@@ -81,6 +81,36 @@ func (mr *MockSDPackageRepositoryMockRecorder) FindByID(arg0, arg1, arg2 interfa
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByID", reflect.TypeOf((*MockSDPackageRepository)(nil).FindByID), arg0, arg1, arg2)
 }
 
+// FindLeastUsedPackageIDByUserID mocks base method.
+func (m *MockSDPackageRepository) FindLeastUsedPackageIDByUserID(arg0 context.Context, arg1 uuid.UUID) (uuid.UUID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindLeastUsedPackageIDByUserID", arg0, arg1)
+	ret0, _ := ret[0].(uuid.UUID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindLeastUsedPackageIDByUserID indicates an expected call of FindLeastUsedPackageIDByUserID.
+func (mr *MockSDPackageRepositoryMockRecorder) FindLeastUsedPackageIDByUserID(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindLeastUsedPackageIDByUserID", reflect.TypeOf((*MockSDPackageRepository)(nil).FindLeastUsedPackageIDByUserID), arg0, arg1)
+}
+
+// FindRandomActivePackage mocks base method.
+func (m *MockSDPackageRepository) FindRandomActivePackage(arg0 context.Context) (*model.SpeechDelayPackage, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindRandomActivePackage", arg0)
+	ret0, _ := ret[0].(*model.SpeechDelayPackage)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindRandomActivePackage indicates an expected call of FindRandomActivePackage.
+func (mr *MockSDPackageRepositoryMockRecorder) FindRandomActivePackage(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindRandomActivePackage", reflect.TypeOf((*MockSDPackageRepository)(nil).FindRandomActivePackage), arg0)
+}
+
 // Search mocks base method.
 func (m *MockSDPackageRepository) Search(arg0 context.Context, arg1 *model.SearchSDPackageInput) ([]*model.SpeechDelayPackage, error) {
 	m.ctrl.T.Helper()
