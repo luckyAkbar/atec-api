@@ -76,3 +76,24 @@ func (s *service) handleSubmitSDTestAnswer() echo.HandlerFunc {
 		}
 	}
 }
+
+func (s *service) handleViewSDTestHistories() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		input := &model.ViewHistoriesInput{}
+
+		// no need to check err here. Zero value in input is fine
+		_ = c.Bind(input)
+
+		resp, custerr := s.sdtestUsecase.Histories(c.Request().Context(), input)
+		if custerr.Type != nil {
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, custerr.GenerateStdlibHTTPResponse(nil), nil)
+		}
+
+		return s.apiResponseGenerator.GenerateEchoAPIResponse(c, &stdhttp.StandardResponse{
+			Success: true,
+			Message: "success",
+			Status:  http.StatusOK,
+			Data:    resp,
+		}, nil)
+	}
+}

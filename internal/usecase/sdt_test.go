@@ -827,3 +827,343 @@ func TestSDTestUsecase_Submit(t *testing.T) {
 		})
 	}
 }
+
+func TestSDTestUsecase_Histories(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	sdtrRepo := mock.NewMockSDTestRepository(kit.Ctrl)
+	sdpRepo := mock.NewMockSDPackageRepository(kit.Ctrl)
+	sharedCryptor := commonMock.NewMockSharedCryptor(kit.Ctrl)
+
+	ctx := context.Background()
+	uid := uuid.New()
+	adminCtx := model.SetUserToCtx(ctx, model.AuthUser{
+		UserID:      uuid.New(),
+		AccessToken: "token",
+		Role:        model.RoleAdmin,
+	})
+	userCtx := model.SetUserToCtx(ctx, model.AuthUser{
+		UserID:      uid,
+		AccessToken: "token",
+		Role:        model.RoleUser,
+	})
+	db := kit.DB
+	randUserID := uuid.New()
+	tid := uuid.New()
+	pid := uuid.New()
+	now := time.Now().UTC()
+
+	uc := NewSDTestResultUsecase(sdtrRepo, sdpRepo, sharedCryptor, db)
+
+	tests := []common.TestStructure{
+		{
+			Name: "admin trying to search",
+			MockFn: func() {
+				sdtrRepo.EXPECT().Search(adminCtx, &model.ViewHistoriesInput{
+					UserID: uuid.NullUUID{UUID: randUserID, Valid: true},
+				}).Times(1).Return([]*model.SDTest{
+					{
+						ID: tid,
+					},
+				}, nil)
+			},
+			Run: func() {
+				res, cerr := uc.Histories(adminCtx, &model.ViewHistoriesInput{
+					UserID: uuid.NullUUID{UUID: randUserID, Valid: true},
+				})
+
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res[0].ID, tid)
+			},
+		},
+		{
+			Name: "admin trying to search",
+			MockFn: func() {
+				sdtrRepo.EXPECT().Search(adminCtx, &model.ViewHistoriesInput{
+					UserID:    uuid.NullUUID{UUID: randUserID, Valid: true},
+					PackageID: uuid.NullUUID{UUID: pid, Valid: true},
+				}).Times(1).Return([]*model.SDTest{
+					{
+						ID: tid,
+					},
+				}, nil)
+			},
+			Run: func() {
+				res, cerr := uc.Histories(adminCtx, &model.ViewHistoriesInput{
+					UserID:    uuid.NullUUID{UUID: randUserID, Valid: true},
+					PackageID: uuid.NullUUID{UUID: pid, Valid: true},
+				})
+
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res[0].ID, tid)
+			},
+		},
+		{
+			Name: "admin trying to search",
+			MockFn: func() {
+				sdtrRepo.EXPECT().Search(adminCtx, &model.ViewHistoriesInput{
+					UserID:       uuid.NullUUID{UUID: randUserID, Valid: true},
+					PackageID:    uuid.NullUUID{UUID: pid, Valid: true},
+					CreatedAfter: null.NewTime(now, true),
+				}).Times(1).Return([]*model.SDTest{
+					{
+						ID: tid,
+					},
+				}, nil)
+			},
+			Run: func() {
+				res, cerr := uc.Histories(adminCtx, &model.ViewHistoriesInput{
+					UserID:       uuid.NullUUID{UUID: randUserID, Valid: true},
+					PackageID:    uuid.NullUUID{UUID: pid, Valid: true},
+					CreatedAfter: null.NewTime(now, true),
+				})
+
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res[0].ID, tid)
+			},
+		},
+		{
+			Name: "admin trying to search",
+			MockFn: func() {
+				sdtrRepo.EXPECT().Search(adminCtx, &model.ViewHistoriesInput{
+					UserID:            uuid.NullUUID{UUID: randUserID, Valid: true},
+					PackageID:         uuid.NullUUID{UUID: pid, Valid: true},
+					CreatedAfter:      null.NewTime(now, true),
+					IncludeUnfinished: true,
+				}).Times(1).Return([]*model.SDTest{
+					{
+						ID: tid,
+					},
+				}, nil)
+			},
+			Run: func() {
+				res, cerr := uc.Histories(adminCtx, &model.ViewHistoriesInput{
+					UserID:            uuid.NullUUID{UUID: randUserID, Valid: true},
+					PackageID:         uuid.NullUUID{UUID: pid, Valid: true},
+					CreatedAfter:      null.NewTime(now, true),
+					IncludeUnfinished: true,
+				})
+
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res[0].ID, tid)
+			},
+		},
+		{
+			Name: "admin trying to search",
+			MockFn: func() {
+				sdtrRepo.EXPECT().Search(adminCtx, &model.ViewHistoriesInput{
+					UserID:            uuid.NullUUID{UUID: randUserID, Valid: true},
+					PackageID:         uuid.NullUUID{UUID: pid, Valid: true},
+					CreatedAfter:      null.NewTime(now, true),
+					IncludeUnfinished: true,
+					IncludeDeleted:    true,
+				}).Times(1).Return([]*model.SDTest{
+					{
+						ID: tid,
+					},
+				}, nil)
+			},
+			Run: func() {
+				res, cerr := uc.Histories(adminCtx, &model.ViewHistoriesInput{
+					UserID:            uuid.NullUUID{UUID: randUserID, Valid: true},
+					PackageID:         uuid.NullUUID{UUID: pid, Valid: true},
+					CreatedAfter:      null.NewTime(now, true),
+					IncludeUnfinished: true,
+					IncludeDeleted:    true,
+				})
+
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res[0].ID, tid)
+			},
+		},
+		{
+			Name: "admin trying to search",
+			MockFn: func() {
+				sdtrRepo.EXPECT().Search(adminCtx, &model.ViewHistoriesInput{
+					UserID:            uuid.NullUUID{UUID: randUserID, Valid: true},
+					PackageID:         uuid.NullUUID{UUID: pid, Valid: true},
+					CreatedAfter:      null.NewTime(now, true),
+					IncludeUnfinished: true,
+					IncludeDeleted:    true,
+					Limit:             10,
+					Offset:            11,
+				}).Times(1).Return([]*model.SDTest{
+					{
+						ID: tid,
+					},
+				}, nil)
+			},
+			Run: func() {
+				res, cerr := uc.Histories(adminCtx, &model.ViewHistoriesInput{
+					UserID:            uuid.NullUUID{UUID: randUserID, Valid: true},
+					PackageID:         uuid.NullUUID{UUID: pid, Valid: true},
+					CreatedAfter:      null.NewTime(now, true),
+					IncludeUnfinished: true,
+					IncludeDeleted:    true,
+					Limit:             10,
+					Offset:            11,
+				})
+
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res[0].ID, tid)
+			},
+		},
+		{
+			Name: "non admin search param user id must be overriden",
+			MockFn: func() {
+				sdtrRepo.EXPECT().Search(userCtx, &model.ViewHistoriesInput{
+					UserID:            uuid.NullUUID{UUID: uid, Valid: true},
+					PackageID:         uuid.NullUUID{UUID: pid, Valid: true},
+					CreatedAfter:      null.NewTime(now, true),
+					IncludeUnfinished: true,
+					IncludeDeleted:    true,
+					Limit:             10,
+					Offset:            11,
+				}).Times(1).Return([]*model.SDTest{
+					{
+						ID: tid,
+					},
+				}, nil)
+			},
+			Run: func() {
+				res, cerr := uc.Histories(userCtx, &model.ViewHistoriesInput{
+					UserID:            uuid.NullUUID{UUID: uuid.New(), Valid: true},
+					PackageID:         uuid.NullUUID{UUID: pid, Valid: true},
+					CreatedAfter:      null.NewTime(now, true),
+					IncludeUnfinished: true,
+					IncludeDeleted:    true,
+					Limit:             10,
+					Offset:            11,
+				})
+
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res[0].ID, tid)
+			},
+		},
+		{
+			Name: "non admin search param user id must be overriden",
+			MockFn: func() {
+				sdtrRepo.EXPECT().Search(userCtx, &model.ViewHistoriesInput{
+					UserID:            uuid.NullUUID{UUID: uid, Valid: true},
+					PackageID:         uuid.NullUUID{UUID: pid, Valid: true},
+					CreatedAfter:      null.NewTime(now, true),
+					IncludeUnfinished: true,
+					IncludeDeleted:    true,
+					Limit:             10,
+					Offset:            11,
+				}).Times(1).Return([]*model.SDTest{
+					{
+						ID: tid,
+					},
+				}, nil)
+			},
+			Run: func() {
+				res, cerr := uc.Histories(userCtx, &model.ViewHistoriesInput{
+					UserID:            uuid.NullUUID{UUID: uid, Valid: true},
+					PackageID:         uuid.NullUUID{UUID: pid, Valid: true},
+					CreatedAfter:      null.NewTime(now, true),
+					IncludeUnfinished: true,
+					IncludeDeleted:    true,
+					Limit:             10,
+					Offset:            11,
+				})
+
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res[0].ID, tid)
+			},
+		},
+		{
+			Name: "err db",
+			MockFn: func() {
+				sdtrRepo.EXPECT().Search(userCtx, &model.ViewHistoriesInput{
+					UserID:            uuid.NullUUID{UUID: uid, Valid: true},
+					PackageID:         uuid.NullUUID{UUID: pid, Valid: true},
+					CreatedAfter:      null.NewTime(now, true),
+					IncludeUnfinished: true,
+					IncludeDeleted:    true,
+					Limit:             10,
+					Offset:            11,
+				}).Times(1).Return(nil, errors.New("err db"))
+			},
+			Run: func() {
+				_, cerr := uc.Histories(userCtx, &model.ViewHistoriesInput{
+					UserID:            uuid.NullUUID{UUID: uid, Valid: true},
+					PackageID:         uuid.NullUUID{UUID: pid, Valid: true},
+					CreatedAfter:      null.NewTime(now, true),
+					IncludeUnfinished: true,
+					IncludeDeleted:    true,
+					Limit:             10,
+					Offset:            11,
+				})
+
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrInternal)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
+			},
+		},
+		{
+			Name: "empty array?",
+			MockFn: func() {
+				sdtrRepo.EXPECT().Search(userCtx, &model.ViewHistoriesInput{
+					UserID:            uuid.NullUUID{UUID: uid, Valid: true},
+					PackageID:         uuid.NullUUID{UUID: pid, Valid: true},
+					CreatedAfter:      null.NewTime(now, true),
+					IncludeUnfinished: true,
+					IncludeDeleted:    true,
+					Limit:             10,
+					Offset:            11,
+				}).Times(1).Return(nil, nil)
+			},
+			Run: func() {
+				res, cerr := uc.Histories(userCtx, &model.ViewHistoriesInput{
+					UserID:            uuid.NullUUID{UUID: uid, Valid: true},
+					PackageID:         uuid.NullUUID{UUID: pid, Valid: true},
+					CreatedAfter:      null.NewTime(now, true),
+					IncludeUnfinished: true,
+					IncludeDeleted:    true,
+					Limit:             10,
+					Offset:            11,
+				})
+
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, len(res), 0)
+			},
+		},
+		{
+			Name: "empty array?",
+			MockFn: func() {
+				sdtrRepo.EXPECT().Search(userCtx, &model.ViewHistoriesInput{
+					UserID:            uuid.NullUUID{UUID: uid, Valid: true},
+					PackageID:         uuid.NullUUID{UUID: pid, Valid: true},
+					CreatedAfter:      null.NewTime(now, true),
+					IncludeUnfinished: true,
+					IncludeDeleted:    true,
+					Limit:             10,
+					Offset:            11,
+				}).Times(1).Return([]*model.SDTest{}, nil)
+			},
+			Run: func() {
+				res, cerr := uc.Histories(userCtx, &model.ViewHistoriesInput{
+					UserID:            uuid.NullUUID{UUID: uid, Valid: true},
+					PackageID:         uuid.NullUUID{UUID: pid, Valid: true},
+					CreatedAfter:      null.NewTime(now, true),
+					IncludeUnfinished: true,
+					IncludeDeleted:    true,
+					Limit:             10,
+					Offset:            11,
+				})
+
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, len(res), 0)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}

@@ -226,6 +226,37 @@ func (uc *sdtrUc) Submit(ctx context.Context, input *model.SubmitSDTestInput) (*
 	return testData.ToSubmitTestOutput(pack.Name, input.SubmitKey, pack.Package.RenderTestQuestions()), nilErr
 }
 
+func (uc *sdtrUc) Histories(ctx context.Context, input *model.ViewHistoriesInput) ([]model.ViewHistoriesOutput, *common.Error) {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func":  "sdtrUc.Histories",
+		"input": helper.Dump(input),
+	})
+
+	searchInput := input
+	requester := model.GetUserFromCtx(ctx)
+	if !requester.IsAdmin() {
+		searchInput.UserID = uuid.NullUUID{UUID: requester.UserID, Valid: true}
+	}
+
+	res, err := uc.sdtrRepo.Search(ctx, searchInput)
+	if err != nil {
+		logger.WithError(err).Error("failed to search sd test histories")
+		return nil, &common.Error{
+			Message: "failed to search sd test histories",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	}
+
+	resp := []model.ViewHistoriesOutput{}
+	for _, v := range res {
+		resp = append(resp, v.ToViewHistoriesOutput())
+	}
+
+	return resp, nilErr
+}
+
 func (uc *sdtrUc) validateAndFetchPackageID(ctx context.Context, packageID, userID uuid.NullUUID) (*model.SpeechDelayPackage, *common.Error) {
 	if packageID.Valid {
 		pack, err := uc.sdpRepo.FindByID(ctx, packageID.UUID, false)
