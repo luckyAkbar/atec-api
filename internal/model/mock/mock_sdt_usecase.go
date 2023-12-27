@@ -50,3 +50,18 @@ func (mr *MockSDTestUsecaseMockRecorder) Initiate(arg0, arg1 interface{}) *gomoc
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Initiate", reflect.TypeOf((*MockSDTestUsecase)(nil).Initiate), arg0, arg1)
 }
+
+// Submit mocks base method.
+func (m *MockSDTestUsecase) Submit(arg0 context.Context, arg1 *model.SubmitSDTestInput) (*model.SubmitSDTestOutput, *common.Error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Submit", arg0, arg1)
+	ret0, _ := ret[0].(*model.SubmitSDTestOutput)
+	ret1, _ := ret[1].(*common.Error)
+	return ret0, ret1
+}
+
+// Submit indicates an expected call of Submit.
+func (mr *MockSDTestUsecaseMockRecorder) Submit(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Submit", reflect.TypeOf((*MockSDTestUsecase)(nil).Submit), arg0, arg1)
+}

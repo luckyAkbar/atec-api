@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
@@ -14,6 +15,7 @@ import (
 	"github.com/luckyAkbar/atec-api/internal/model/mock"
 	"github.com/luckyAkbar/atec-api/internal/repository"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/guregu/null.v4"
 )
 
 func TestSDTestUsecase_Initiate(t *testing.T) {
@@ -274,6 +276,546 @@ func TestSDTestUsecase_Initiate(t *testing.T) {
 				assert.NoError(t, cerr.Type)
 				assert.Equal(t, res.PackageID, inputPackageID)
 				assert.Equal(t, res.SubmitKey, "plain")
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
+
+func TestSDTestUsecase_Submit(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	sdtrRepo := mock.NewMockSDTestRepository(kit.Ctrl)
+	sdpRepo := mock.NewMockSDPackageRepository(kit.Ctrl)
+	sharedCryptor := commonMock.NewMockSharedCryptor(kit.Ctrl)
+
+	ctx := context.Background()
+	db := kit.DB
+	tid := uuid.New()
+	packID := uuid.New()
+
+	user := model.AuthUser{
+		UserID:      uuid.New(),
+		AccessToken: "token",
+		Role:        model.RoleAdmin,
+	}
+
+	authCtx := model.SetUserToCtx(ctx, user)
+
+	uc := NewSDTestResultUsecase(sdtrRepo, sdpRepo, sharedCryptor, db)
+
+	tests := []common.TestStructure{
+		{
+			Name:   "input invalid",
+			MockFn: func() {},
+			Run: func() {
+				_, cerr := uc.Submit(ctx, &model.SubmitSDTestInput{})
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Code, http.StatusBadRequest)
+				assert.Equal(t, cerr.Type, ErrInvalidSDTestAnswer)
+			},
+		},
+		{
+			Name:   "input invalid",
+			MockFn: func() {},
+			Run: func() {
+				_, cerr := uc.Submit(ctx, &model.SubmitSDTestInput{
+					TestID:    tid,
+					SubmitKey: "",
+				})
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Code, http.StatusBadRequest)
+				assert.Equal(t, cerr.Type, ErrInvalidSDTestAnswer)
+			},
+		},
+		{
+			Name:   "input invalid",
+			MockFn: func() {},
+			Run: func() {
+				_, cerr := uc.Submit(ctx, &model.SubmitSDTestInput{
+					TestID:    tid,
+					SubmitKey: "valid",
+					Answers:   &model.SDTestAnswer{},
+				})
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Code, http.StatusBadRequest)
+				assert.Equal(t, cerr.Type, ErrInvalidSDTestAnswer)
+			},
+		},
+		{
+			Name: "db failed when trying to find sd test result by id",
+			MockFn: func() {
+				sdtrRepo.EXPECT().FindByID(ctx, tid).Times(1).Return(nil, errors.New("err db"))
+			},
+			Run: func() {
+				_, cerr := uc.Submit(ctx, &model.SubmitSDTestInput{
+					TestID:    tid,
+					SubmitKey: "valid",
+					Answers: &model.SDTestAnswer{
+						TestAnswers: []*model.TestAnswer{
+							{
+								GroupName: "test",
+								Answers: []model.Answer{
+									{
+										Question: "test",
+										Answer:   "test",
+									},
+								},
+							},
+						},
+					},
+				})
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
+				assert.Equal(t, cerr.Type, ErrInternal)
+			},
+		},
+		{
+			Name: "test data not found",
+			MockFn: func() {
+				sdtrRepo.EXPECT().FindByID(ctx, tid).Times(1).Return(nil, repository.ErrNotFound)
+			},
+			Run: func() {
+				_, cerr := uc.Submit(ctx, &model.SubmitSDTestInput{
+					TestID:    tid,
+					SubmitKey: "valid",
+					Answers: &model.SDTestAnswer{
+						TestAnswers: []*model.TestAnswer{
+							{
+								GroupName: "test",
+								Answers: []model.Answer{
+									{
+										Question: "test",
+										Answer:   "test",
+									},
+								},
+							},
+						},
+					},
+				})
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Code, http.StatusNotFound)
+				assert.Equal(t, cerr.Type, ErrResourceNotFound)
+			},
+		},
+		{
+			Name: "the submitter id set, but submitted by a non registered user",
+			MockFn: func() {
+				sdtrRepo.EXPECT().FindByID(ctx, tid).Times(1).Return(&model.SDTest{
+					UserID: uuid.NullUUID{UUID: uuid.New(), Valid: true},
+				}, nil)
+			},
+			Run: func() {
+				_, cerr := uc.Submit(ctx, &model.SubmitSDTestInput{
+					TestID:    tid,
+					SubmitKey: "valid",
+					Answers: &model.SDTestAnswer{
+						TestAnswers: []*model.TestAnswer{
+							{
+								GroupName: "test",
+								Answers: []model.Answer{
+									{
+										Question: "test",
+										Answer:   "test",
+									},
+								},
+							},
+						},
+					},
+				})
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Code, http.StatusForbidden)
+				assert.Equal(t, cerr.Type, ErrForbiddenToSubmitSDTestAnswer)
+			},
+		},
+		{
+			Name: "the submitter id set, but submitted by different user",
+			MockFn: func() {
+				sdtrRepo.EXPECT().FindByID(authCtx, tid).Times(1).Return(&model.SDTest{
+					UserID: uuid.NullUUID{UUID: uuid.New(), Valid: true},
+				}, nil)
+			},
+			Run: func() {
+				_, cerr := uc.Submit(authCtx, &model.SubmitSDTestInput{
+					TestID:    tid,
+					SubmitKey: "valid",
+					Answers: &model.SDTestAnswer{
+						TestAnswers: []*model.TestAnswer{
+							{
+								GroupName: "test",
+								Answers: []model.Answer{
+									{
+										Question: "test",
+										Answer:   "test",
+									},
+								},
+							},
+						},
+					},
+				})
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Code, http.StatusForbidden)
+				assert.Equal(t, cerr.Type, ErrForbiddenToSubmitSDTestAnswer)
+			},
+		},
+		{
+			Name: "submit key invalid",
+			MockFn: func() {
+				sdtrRepo.EXPECT().FindByID(authCtx, tid).Times(1).Return(&model.SDTest{
+					UserID:    uuid.NullUUID{UUID: user.UserID, Valid: true},
+					SubmitKey: "submitkeyenc",
+				}, nil)
+				sharedCryptor.EXPECT().ReverseSecureToken("valid").Times(1).Return("different")
+			},
+			Run: func() {
+				_, cerr := uc.Submit(authCtx, &model.SubmitSDTestInput{
+					TestID:    tid,
+					SubmitKey: "valid",
+					Answers: &model.SDTestAnswer{
+						TestAnswers: []*model.TestAnswer{
+							{
+								GroupName: "test",
+								Answers: []model.Answer{
+									{
+										Question: "test",
+										Answer:   "test",
+									},
+								},
+							},
+						},
+					},
+				})
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Code, http.StatusBadRequest)
+				assert.Equal(t, cerr.Type, ErrInvalidSubmitKey)
+			},
+		},
+		{
+			Name: "test data is already pass the OpenUntil",
+			MockFn: func() {
+				sdtrRepo.EXPECT().FindByID(authCtx, tid).Times(1).Return(&model.SDTest{
+					UserID:    uuid.NullUUID{UUID: user.UserID, Valid: true},
+					SubmitKey: "submitkeyenc",
+					OpenUntil: time.Now().Add(time.Hour * -1).UTC(),
+				}, nil)
+				sharedCryptor.EXPECT().ReverseSecureToken("valid").Times(1).Return("submitkeyenc")
+			},
+			Run: func() {
+				_, cerr := uc.Submit(authCtx, &model.SubmitSDTestInput{
+					TestID:    tid,
+					SubmitKey: "valid",
+					Answers: &model.SDTestAnswer{
+						TestAnswers: []*model.TestAnswer{
+							{
+								GroupName: "test",
+								Answers: []model.Answer{
+									{
+										Question: "test",
+										Answer:   "test",
+									},
+								},
+							},
+						},
+					},
+				})
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Code, http.StatusForbidden)
+				assert.Equal(t, cerr.Type, ErrForbiddenToSubmitSDTestAnswer)
+			},
+		},
+		{
+			Name: "test data's FinishedAt is already set",
+			MockFn: func() {
+				sdtrRepo.EXPECT().FindByID(authCtx, tid).Times(1).Return(&model.SDTest{
+					UserID:     uuid.NullUUID{UUID: user.UserID, Valid: true},
+					SubmitKey:  "submitkeyenc",
+					OpenUntil:  time.Now().Add(time.Hour * 1).UTC(),
+					FinishedAt: null.NewTime(time.Now().UTC(), true),
+				}, nil)
+				sharedCryptor.EXPECT().ReverseSecureToken("valid").Times(1).Return("submitkeyenc")
+			},
+			Run: func() {
+				_, cerr := uc.Submit(authCtx, &model.SubmitSDTestInput{
+					TestID:    tid,
+					SubmitKey: "valid",
+					Answers: &model.SDTestAnswer{
+						TestAnswers: []*model.TestAnswer{
+							{
+								GroupName: "test",
+								Answers: []model.Answer{
+									{
+										Question: "test",
+										Answer:   "test",
+									},
+								},
+							},
+						},
+					},
+				})
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Code, http.StatusForbidden)
+				assert.Equal(t, cerr.Type, ErrForbiddenToSubmitSDTestAnswer)
+			},
+		},
+		{
+			Name: "failure on finding package id from db",
+			MockFn: func() {
+				sdtrRepo.EXPECT().FindByID(authCtx, tid).Times(1).Return(&model.SDTest{
+					UserID:    uuid.NullUUID{UUID: user.UserID, Valid: true},
+					SubmitKey: "submitkeyenc",
+					OpenUntil: time.Now().Add(time.Hour * 1).UTC(),
+					PackageID: packID,
+				}, nil)
+				sharedCryptor.EXPECT().ReverseSecureToken("valid").Times(1).Return("submitkeyenc")
+				sdpRepo.EXPECT().FindByID(authCtx, packID, false).Times(1).Return(nil, errors.New("err db"))
+			},
+			Run: func() {
+				_, cerr := uc.Submit(authCtx, &model.SubmitSDTestInput{
+					TestID:    tid,
+					SubmitKey: "valid",
+					Answers: &model.SDTestAnswer{
+						TestAnswers: []*model.TestAnswer{
+							{
+								GroupName: "test",
+								Answers: []model.Answer{
+									{
+										Question: "test",
+										Answer:   "test",
+									},
+								},
+							},
+						},
+					},
+				})
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
+				assert.Equal(t, cerr.Type, ErrInternal)
+			},
+		},
+		{
+			Name: "somehow the package was not found",
+			MockFn: func() {
+				sdtrRepo.EXPECT().FindByID(authCtx, tid).Times(1).Return(&model.SDTest{
+					UserID:    uuid.NullUUID{UUID: user.UserID, Valid: true},
+					SubmitKey: "submitkeyenc",
+					OpenUntil: time.Now().Add(time.Hour * 1).UTC(),
+					PackageID: packID,
+				}, nil)
+				sharedCryptor.EXPECT().ReverseSecureToken("valid").Times(1).Return("submitkeyenc")
+				sdpRepo.EXPECT().FindByID(authCtx, packID, false).Times(1).Return(nil, repository.ErrNotFound)
+			},
+			Run: func() {
+				_, cerr := uc.Submit(authCtx, &model.SubmitSDTestInput{
+					TestID:    tid,
+					SubmitKey: "valid",
+					Answers: &model.SDTestAnswer{
+						TestAnswers: []*model.TestAnswer{
+							{
+								GroupName: "test",
+								Answers: []model.Answer{
+									{
+										Question: "test",
+										Answer:   "test",
+									},
+								},
+							},
+						},
+					},
+				})
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Code, http.StatusNotFound)
+				assert.Equal(t, cerr.Type, ErrResourceNotFound)
+			},
+		},
+		// error on grading process may not be detailed here. but must be on the model package
+		{
+			Name: "any failure on grading process",
+			MockFn: func() {
+				sdtrRepo.EXPECT().FindByID(authCtx, tid).Times(1).Return(&model.SDTest{
+					UserID:    uuid.NullUUID{UUID: user.UserID, Valid: true},
+					SubmitKey: "submitkeyenc",
+					OpenUntil: time.Now().Add(time.Hour * 1).UTC(),
+					PackageID: packID,
+				}, nil)
+				sharedCryptor.EXPECT().ReverseSecureToken("valid").Times(1).Return("submitkeyenc")
+				sdpRepo.EXPECT().FindByID(authCtx, packID, false).Times(1).Return(&model.SpeechDelayPackage{
+					Package: &model.SDPackage{
+						PackageName: "testing",
+						TemplateID:  uuid.New(),
+						SubGroupDetails: []model.SDSubGroupDetail{
+							{
+								Name: "test1",
+								QuestionAndAnswerLists: []model.SDQuestionAndAnswers{
+									{
+										Question: "testing?",
+										AnswersAndValue: []model.SDAnswerAndValue{
+											{
+												Text:  "iya",
+												Value: 1,
+											},
+											{
+												Text:  "nope",
+												Value: 2,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				}, nil)
+			},
+			Run: func() {
+				_, cerr := uc.Submit(authCtx, &model.SubmitSDTestInput{
+					TestID:    tid,
+					SubmitKey: "valid",
+					Answers: &model.SDTestAnswer{
+						TestAnswers: []*model.TestAnswer{
+							{
+								GroupName: "test",
+								Answers: []model.Answer{
+									{
+										Question: "test",
+										Answer:   "test",
+									},
+								},
+							},
+						},
+					},
+				})
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Code, http.StatusBadRequest)
+				assert.Equal(t, cerr.Type, ErrInvalidSDTestAnswer)
+				assert.Equal(t, cerr.Message, "test answer are invalid. details: group test1 is not found on answers list")
+			},
+		},
+		{
+			Name: "failed updating the sd test data",
+			MockFn: func() {
+				sdtrRepo.EXPECT().FindByID(authCtx, tid).Times(1).Return(&model.SDTest{
+					UserID:    uuid.NullUUID{UUID: user.UserID, Valid: true},
+					SubmitKey: "submitkeyenc",
+					OpenUntil: time.Now().Add(time.Hour * 1).UTC(),
+					PackageID: packID,
+				}, nil)
+				sharedCryptor.EXPECT().ReverseSecureToken("valid").Times(1).Return("submitkeyenc")
+				sdpRepo.EXPECT().FindByID(authCtx, packID, false).Times(1).Return(&model.SpeechDelayPackage{
+					Package: &model.SDPackage{
+						PackageName: "testing",
+						TemplateID:  uuid.New(),
+						SubGroupDetails: []model.SDSubGroupDetail{
+							{
+								Name: "test1",
+								QuestionAndAnswerLists: []model.SDQuestionAndAnswers{
+									{
+										Question: "testing?",
+										AnswersAndValue: []model.SDAnswerAndValue{
+											{
+												Text:  "iya",
+												Value: 1,
+											},
+											{
+												Text:  "nope",
+												Value: 2,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				}, nil)
+				sdtrRepo.EXPECT().Update(authCtx, gomock.Any(), nil).Times(1).Return(errors.New("err db"))
+			},
+			Run: func() {
+				_, cerr := uc.Submit(authCtx, &model.SubmitSDTestInput{
+					TestID:    tid,
+					SubmitKey: "valid",
+					Answers: &model.SDTestAnswer{
+						TestAnswers: []*model.TestAnswer{
+							{
+								GroupName: "test1",
+								Answers: []model.Answer{
+									{
+										Question: "testing?",
+										Answer:   "iya",
+									},
+								},
+							},
+						},
+					},
+				})
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
+				assert.Equal(t, cerr.Type, ErrInternal)
+			},
+		},
+		{
+			Name: "ok",
+			MockFn: func() {
+				sdtrRepo.EXPECT().FindByID(authCtx, tid).Times(1).Return(&model.SDTest{
+					UserID:    uuid.NullUUID{UUID: user.UserID, Valid: true},
+					SubmitKey: "submitkeyenc",
+					OpenUntil: time.Now().Add(time.Hour * 1).UTC(),
+					PackageID: packID,
+				}, nil)
+				sharedCryptor.EXPECT().ReverseSecureToken("valid").Times(1).Return("submitkeyenc")
+				sdpRepo.EXPECT().FindByID(authCtx, packID, false).Times(1).Return(&model.SpeechDelayPackage{
+					Package: &model.SDPackage{
+						PackageName: "testing",
+						TemplateID:  uuid.New(),
+						SubGroupDetails: []model.SDSubGroupDetail{
+							{
+								Name: "test1",
+								QuestionAndAnswerLists: []model.SDQuestionAndAnswers{
+									{
+										Question: "testing?",
+										AnswersAndValue: []model.SDAnswerAndValue{
+											{
+												Text:  "iya",
+												Value: 1,
+											},
+											{
+												Text:  "nope",
+												Value: 2,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				}, nil)
+				sdtrRepo.EXPECT().Update(authCtx, gomock.Any(), nil).Times(1).Return(nil)
+			},
+			Run: func() {
+				res, cerr := uc.Submit(authCtx, &model.SubmitSDTestInput{
+					TestID:    tid,
+					SubmitKey: "valid",
+					Answers: &model.SDTestAnswer{
+						TestAnswers: []*model.TestAnswer{
+							{
+								GroupName: "test1",
+								Answers: []model.Answer{
+									{
+										Question: "testing?",
+										Answer:   "iya",
+									},
+								},
+							},
+						},
+					},
+				})
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, res.Result.Result[0].GroupName, "test1")
+				assert.Equal(t, res.Result.Result[0].Result, 1)
 			},
 		},
 	}

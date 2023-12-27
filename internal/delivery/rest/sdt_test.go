@@ -282,3 +282,250 @@ func TestRest_handleInitiateSDTest(t *testing.T) {
 		})
 	}
 }
+
+func TestRest_handleSubmitSDTestAnswer(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockAPIRespGen := httpMock.NewMockAPIResponseGenerator(ctrl)
+	mockSDTestUc := mock.NewMockSDTestUsecase(ctrl)
+
+	input := &model.SubmitSDTestInput{
+		TestID:    uuid.MustParse("f5849b4c-a92e-4d6e-a578-909445c17996"),
+		SubmitKey: "key",
+		Answers: &model.SDTestAnswer{TestAnswers: []*model.TestAnswer{
+			{
+				GroupName: "test",
+				Answers: []model.Answer{
+					{
+						Question: "test1",
+						Answer:   "test2",
+					},
+				},
+			},
+		}},
+	}
+
+	tests := []common.TestStructure{
+		{
+			Name:   "ok",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					sdtestUsecase:        mockSDTestUc,
+				}
+				req := httptest.NewRequest(http.MethodPost, "/sdt/templates/", strings.NewReader(`
+					{
+						"request": {
+							"testID": "f5849b4c-a92e-4d6e-a578-909445c17996",
+							"submitKey": "key",
+							"answers": {
+								"testAnswers": [
+									{
+										"groupName": "test",
+										"answers": [
+											{
+												"question": "test1",
+												"answer": "test2"
+											}
+										]
+									}
+								]
+							}
+						},
+						"signature": "sig"
+					}
+				`))
+				req.Header.Set("Content-Type", "application/json")
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+
+				res := &model.SubmitSDTestOutput{
+					ID: uuid.New(),
+				}
+
+				mockSDTestUc.EXPECT().Submit(ectx.Request().Context(), input).Times(1).Return(res, &common.Error{
+					Type: nil,
+				})
+
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, &stdhttp.StandardResponse{
+					Success: true,
+					Message: "success",
+					Status:  http.StatusOK,
+					Data:    res,
+				}, nil).Times(1).Return(nil)
+
+				err := restService.handleSubmitSDTestAnswer()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name:   "binding json failed",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					sdtestUsecase:        mockSDTestUc,
+				}
+				req := httptest.NewRequest(http.MethodPost, "/sdt/tests/", strings.NewReader(`
+					{
+						"request": {
+							] , <- invalid here
+						},
+						"signature": "sig"
+					}
+				`))
+				req.Header.Set("Content-Type", "application/json")
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil).Times(1).Return(nil)
+
+				err := restService.handleSubmitSDTestAnswer()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name:   "empty request / nil",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					sdtestUsecase:        mockSDTestUc,
+				}
+				req := httptest.NewRequest(http.MethodPost, "/sdt/tests/", strings.NewReader(`
+					{
+						"signature": "sig"
+					}
+				`))
+				req.Header.Set("Content-Type", "application/json")
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil).Times(1).Return(nil)
+
+				err := restService.handleSubmitSDTestAnswer()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name:   "usecase return err internal",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					sdtestUsecase:        mockSDTestUc,
+				}
+				req := httptest.NewRequest(http.MethodPost, "/sdt/tests/", strings.NewReader(`
+					{
+						"request": {
+							"testID": "f5849b4c-a92e-4d6e-a578-909445c17996",
+							"submitKey": "key",
+							"answers": {
+								"testAnswers": [
+									{
+										"groupName": "test",
+										"answers": [
+											{
+												"question": "test1",
+												"answer": "test2"
+											}
+										]
+									}
+								]
+							}
+						},
+						"signature": "sig"
+					}
+				`))
+				req.Header.Set("Content-Type", "application/json")
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+
+				mockSDTestUc.EXPECT().Submit(ectx.Request().Context(), input).Times(1).Return(nil, &common.Error{
+					Type: usecase.ErrInternal,
+				})
+
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, ErrInternal.GenerateStdlibHTTPResponse(nil), nil).Times(1).Return(nil)
+
+				err := restService.handleSubmitSDTestAnswer()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name:   "usecase return specific err",
+			MockFn: func() {},
+			Run: func() {
+				e := echo.New()
+				group := e.Group("")
+				restService := service{
+					rootGroup:            group,
+					apiResponseGenerator: mockAPIRespGen,
+					sdtestUsecase:        mockSDTestUc,
+				}
+				req := httptest.NewRequest(http.MethodPost, "/sdt/tests/", strings.NewReader(`
+					{
+						"request": {
+							"testID": "f5849b4c-a92e-4d6e-a578-909445c17996",
+							"submitKey": "key",
+							"answers": {
+								"testAnswers": [
+									{
+										"groupName": "test",
+										"answers": [
+											{
+												"question": "test1",
+												"answer": "test2"
+											}
+										]
+									}
+								]
+							}
+						},
+						"signature": "sig"
+					}
+				`))
+				req.Header.Set("Content-Type", "application/json")
+
+				rec := httptest.NewRecorder()
+				ectx := e.NewContext(req, rec)
+
+				cerr := &common.Error{
+					Message: "hmz",
+					Cause:   errors.New("err apajalah"),
+					Code:    http.StatusBadRequest,
+					Type:    usecase.ErrSDTemplateInputInvalid,
+				}
+
+				mockSDTestUc.EXPECT().Submit(ectx.Request().Context(), input).Times(1).Return(nil, cerr)
+
+				mockAPIRespGen.EXPECT().GenerateEchoAPIResponse(ectx, cerr.GenerateStdlibHTTPResponse(nil), nil).Times(1).Return(nil)
+
+				err := restService.handleSubmitSDTestAnswer()(ectx)
+				assert.NoError(t, err)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
