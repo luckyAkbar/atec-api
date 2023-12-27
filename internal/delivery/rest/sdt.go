@@ -80,10 +80,9 @@ func (s *service) handleSubmitSDTestAnswer() echo.HandlerFunc {
 func (s *service) handleViewSDTestHistories() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		input := &model.ViewHistoriesInput{}
-		if err := c.Bind(input); err != nil {
-			logrus.Error(err)
-			// return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil)
-		}
+
+		// no need to check err here. Zero value in input is fine
+		_ = c.Bind(input)
 
 		resp, custerr := s.sdtestUsecase.Histories(c.Request().Context(), input)
 		if custerr.Type != nil {
