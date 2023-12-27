@@ -66,6 +66,21 @@ func (mr *MockSDTestRepositoryMockRecorder) FindByID(arg0, arg1 interface{}) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByID", reflect.TypeOf((*MockSDTestRepository)(nil).FindByID), arg0, arg1)
 }
 
+// Search mocks base method.
+func (m *MockSDTestRepository) Search(arg0 context.Context, arg1 *model.ViewHistoriesInput) ([]*model.SDTest, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Search", arg0, arg1)
+	ret0, _ := ret[0].([]*model.SDTest)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Search indicates an expected call of Search.
+func (mr *MockSDTestRepositoryMockRecorder) Search(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Search", reflect.TypeOf((*MockSDTestRepository)(nil).Search), arg0, arg1)
+}
+
 // Update mocks base method.
 func (m *MockSDTestRepository) Update(arg0 context.Context, arg1 *model.SDTest, arg2 *gorm.DB) error {
 	m.ctrl.T.Helper()

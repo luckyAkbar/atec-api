@@ -36,6 +36,21 @@ func (m *MockSDTestUsecase) EXPECT() *MockSDTestUsecaseMockRecorder {
 	return m.recorder
 }
 
+// Histories mocks base method.
+func (m *MockSDTestUsecase) Histories(arg0 context.Context, arg1 *model.ViewHistoriesInput) ([]model.ViewHistoriesOutput, *common.Error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Histories", arg0, arg1)
+	ret0, _ := ret[0].([]model.ViewHistoriesOutput)
+	ret1, _ := ret[1].(*common.Error)
+	return ret0, ret1
+}
+
+// Histories indicates an expected call of Histories.
+func (mr *MockSDTestUsecaseMockRecorder) Histories(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Histories", reflect.TypeOf((*MockSDTestUsecase)(nil).Histories), arg0, arg1)
+}
+
 // Initiate mocks base method.
 func (m *MockSDTestUsecase) Initiate(arg0 context.Context, arg1 *model.InitiateSDTestInput) (*model.InitiateSDTestOutput, *common.Error) {
 	m.ctrl.T.Helper()

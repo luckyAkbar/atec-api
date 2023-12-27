@@ -195,3 +195,162 @@ func TestSDTestResultRepository_Update(t *testing.T) {
 		})
 	}
 }
+
+func TestSDTestResultRepository_Search(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	repo := NewSDTestResultRepository(kit.DB)
+	ctx := context.Background()
+	mock := kit.DBmock
+	tid := uuid.New()
+	userID := uuid.New()
+	pid := uuid.New()
+	ca := time.Now().Add(time.Hour * -1).UTC()
+
+	tests := []common.TestStructure{
+		{
+			Name: "ok",
+			MockFn: func() {
+				mock.ExpectQuery(`^SELECT .+ FROM "test_results" WHERE`).
+					WithArgs(userID).
+					WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(tid))
+			},
+			Run: func() {
+				res, err := repo.Search(ctx, &model.ViewHistoriesInput{
+					UserID: uuid.NullUUID{UUID: userID, Valid: true},
+				})
+				assert.NoError(t, err)
+				assert.Equal(t, res[0].ID, tid)
+			},
+		},
+		{
+			Name: "ok",
+			MockFn: func() {
+				mock.ExpectQuery(`^SELECT .+ FROM "test_results" WHERE finished_at IS NOT NULL AND "test_results"."deleted_at" IS NULL ORDER BY created_at DESC`).
+					WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(tid))
+			},
+			Run: func() {
+				res, err := repo.Search(ctx, &model.ViewHistoriesInput{})
+				assert.NoError(t, err)
+				assert.Equal(t, res[0].ID, tid)
+			},
+		},
+		{
+			Name: "ok",
+			MockFn: func() {
+				mock.ExpectQuery(`^SELECT .+ FROM "test_results" WHERE`).
+					WithArgs(userID, pid).
+					WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(tid))
+			},
+			Run: func() {
+				res, err := repo.Search(ctx, &model.ViewHistoriesInput{
+					UserID:    uuid.NullUUID{UUID: userID, Valid: true},
+					PackageID: uuid.NullUUID{UUID: pid, Valid: true},
+				})
+				assert.NoError(t, err)
+				assert.Equal(t, res[0].ID, tid)
+			},
+		},
+		{
+			Name: "ok",
+			MockFn: func() {
+				mock.ExpectQuery(`^SELECT .+ FROM "test_results" WHERE`).
+					WithArgs(userID, pid, ca).
+					WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(tid))
+			},
+			Run: func() {
+				res, err := repo.Search(ctx, &model.ViewHistoriesInput{
+					UserID:       uuid.NullUUID{UUID: userID, Valid: true},
+					PackageID:    uuid.NullUUID{UUID: pid, Valid: true},
+					CreatedAfter: null.NewTime(ca, true),
+				})
+				assert.NoError(t, err)
+				assert.Equal(t, res[0].ID, tid)
+			},
+		},
+		{
+			Name: "ok",
+			MockFn: func() {
+				mock.ExpectQuery(`^SELECT .+ FROM "test_results" WHERE`).
+					WithArgs(userID, pid, ca).
+					WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(tid))
+			},
+			Run: func() {
+				res, err := repo.Search(ctx, &model.ViewHistoriesInput{
+					UserID:            uuid.NullUUID{UUID: userID, Valid: true},
+					PackageID:         uuid.NullUUID{UUID: pid, Valid: true},
+					CreatedAfter:      null.NewTime(ca, true),
+					IncludeUnfinished: true,
+				})
+				assert.NoError(t, err)
+				assert.Equal(t, res[0].ID, tid)
+			},
+		},
+		{
+			Name: "ok",
+			MockFn: func() {
+				mock.ExpectQuery(`^SELECT .+ FROM "test_results" WHERE .+ finished_at IS NOT NULL`).
+					WithArgs(userID, pid, ca).
+					WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(tid))
+			},
+			Run: func() {
+				res, err := repo.Search(ctx, &model.ViewHistoriesInput{
+					UserID:            uuid.NullUUID{UUID: userID, Valid: true},
+					PackageID:         uuid.NullUUID{UUID: pid, Valid: true},
+					CreatedAfter:      null.NewTime(ca, true),
+					IncludeUnfinished: false,
+				})
+				assert.NoError(t, err)
+				assert.Equal(t, res[0].ID, tid)
+			},
+		},
+		{
+			Name: "ok",
+			MockFn: func() {
+				mock.ExpectQuery(`^SELECT .+ FROM "test_results" WHERE`).
+					WithArgs(userID, pid, ca).
+					WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(tid))
+			},
+			Run: func() {
+				res, err := repo.Search(ctx, &model.ViewHistoriesInput{
+					UserID:            uuid.NullUUID{UUID: userID, Valid: true},
+					PackageID:         uuid.NullUUID{UUID: pid, Valid: true},
+					CreatedAfter:      null.NewTime(ca, true),
+					IncludeUnfinished: false,
+					IncludeDeleted:    true,
+				})
+				assert.NoError(t, err)
+				assert.Equal(t, res[0].ID, tid)
+			},
+		},
+		{
+			Name: "ok",
+			MockFn: func() {
+				mock.ExpectQuery(`^SELECT .+ FROM "test_results" WHERE`).
+					WithArgs(userID, pid, ca).
+					WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(tid))
+			},
+			Run: func() {
+				res, err := repo.Search(ctx, &model.ViewHistoriesInput{
+					UserID:            uuid.NullUUID{UUID: userID, Valid: true},
+					PackageID:         uuid.NullUUID{UUID: pid, Valid: true},
+					CreatedAfter:      null.NewTime(ca, true),
+					IncludeUnfinished: false,
+					IncludeDeleted:    true,
+					Limit:             10,
+					Offset:            11,
+				})
+				assert.NoError(t, err)
+				assert.Equal(t, res[0].ID, tid)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
