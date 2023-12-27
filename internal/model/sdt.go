@@ -80,6 +80,23 @@ func (sdt *SDTest) ToSubmitTestOutput(packageName, plainSubmitKey string, testQu
 	}
 }
 
+// ToViewHistoriesOutput convert SDTest to ViewHistoriesOutput
+func (sdt *SDTest) ToViewHistoriesOutput() ViewHistoriesOutput {
+	return ViewHistoriesOutput{
+		ID:         sdt.ID,
+		PackageID:  sdt.PackageID,
+		UserID:     sdt.UserID,
+		OpenUntil:  sdt.OpenUntil,
+		FinishedAt: sdt.FinishedAt.Time.UTC(),
+		CreatedAt:  sdt.CreatedAt,
+		UpdatedAt:  sdt.UpdatedAt,
+		DeletedAt:  sdt.DeletedAt,
+		Answer:     sdt.Answer,
+		Result:     sdt.Result,
+	}
+
+}
+
 // TableName must be implemented to correctly safe the sd test result to test_result table
 func (sdt SDTest) TableName() string {
 	return "test_results"
@@ -351,10 +368,67 @@ type InitiateSDTestOutput struct {
 	DeletedAt    gorm.DeletedAt              `json:"deletedAt,omitempty"`
 }
 
+// ViewHistoriesInput input
+type ViewHistoriesInput struct {
+	UserID            uuid.NullUUID `query:"userID"`
+	PackageID         uuid.NullUUID `query:"packageID"`
+	CreatedAfter      null.Time     `query:"createdAfter"`
+	IncludeUnfinished bool          `query:"includeUnfinished"`
+	IncludeDeleted    bool          `query:"includeDeleted"`
+	Limit             int           `query:"limit"`
+	Offset            int           `query:"offset"`
+}
+
+// ToWhereQuery convert input to search query
+func (vhi *ViewHistoriesInput) ToWhereQuery() ([]interface{}, []interface{}) {
+	var whereQuery []interface{}
+	var conds []interface{}
+
+	if vhi.Limit < 0 || vhi.Limit > 100 {
+		vhi.Limit = 100
+	}
+
+	if vhi.Offset < 0 {
+		vhi.Offset = 0
+	}
+
+	if vhi.UserID.Valid {
+		whereQuery = append(whereQuery, "user_id = ?")
+		conds = append(conds, vhi.UserID)
+	}
+
+	if vhi.PackageID.Valid {
+		whereQuery = append(whereQuery, "package_id = ?")
+		conds = append(conds, vhi.PackageID)
+	}
+
+	if vhi.CreatedAfter.Valid {
+		whereQuery = append(whereQuery, "created_at > ?")
+		conds = append(conds, vhi.CreatedAfter.Time)
+	}
+
+	return whereQuery, conds
+}
+
+// ViewHistoriesOutput output from submit sd test
+type ViewHistoriesOutput struct {
+	ID         uuid.UUID      `json:"id"`
+	PackageID  uuid.UUID      `json:"packageID"`
+	UserID     uuid.NullUUID  `json:"userID,omitempty"`
+	Answer     SDTestAnswer   `json:"answer"`
+	Result     SDTestResult   `json:"result"`
+	OpenUntil  time.Time      `json:"openUntil"`
+	FinishedAt time.Time      `json:"finishedAt"`
+	CreatedAt  time.Time      `json:"createdAt"`
+	UpdatedAt  time.Time      `json:"updatedAt"`
+	DeletedAt  gorm.DeletedAt `json:"deletedAt,omitempty"`
+}
+
 // SDTestUsecase usecase
 type SDTestUsecase interface {
 	Initiate(ctx context.Context, input *InitiateSDTestInput) (*InitiateSDTestOutput, *common.Error)
 	Submit(ctx context.Context, input *SubmitSDTestInput) (*SubmitSDTestOutput, *common.Error)
+	Histories(ctx context.Context, input *ViewHistoriesInput) ([]ViewHistoriesOutput, *common.Error)
 }
 
 // SDTestRepository repository
@@ -362,4 +436,5 @@ type SDTestRepository interface {
 	Create(ctx context.Context, test *SDTest, tx *gorm.DB) error
 	FindByID(ctx context.Context, id uuid.UUID) (*SDTest, error)
 	Update(ctx context.Context, test *SDTest, tx *gorm.DB) error
+	Search(ctx context.Context, input *ViewHistoriesInput) ([]*SDTest, error)
 }

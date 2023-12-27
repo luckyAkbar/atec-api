@@ -74,3 +74,33 @@ func (r *sdtrRepo) Update(ctx context.Context, tr *model.SDTest, tx *gorm.DB) er
 
 	return nil
 }
+
+func (r *sdtrRepo) Search(ctx context.Context, input *model.ViewHistoriesInput) ([]*model.SDTest, error) {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func":  "sdtrRepo.Search",
+		"input": helper.Dump(input),
+	})
+
+	query := r.db.WithContext(ctx)
+	if input.IncludeDeleted {
+		query = query.Unscoped()
+	}
+
+	where, conds := input.ToWhereQuery()
+	for i := 0; i < len(where); i++ {
+		query = query.Where(where[i], conds[i])
+	}
+
+	if !input.IncludeUnfinished {
+		query = query.Where("finished_at IS NOT NULL")
+	}
+
+	var sdt []*model.SDTest
+	err := query.Limit(input.Limit).Offset(input.Offset).Order("created_at DESC").Find(&sdt).Error
+	if err != nil {
+		logger.WithError(err).Error("failed to search test result")
+		return nil, err
+	}
+
+	return sdt, nil
+}

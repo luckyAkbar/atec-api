@@ -99,6 +99,9 @@ var (
 
 	// ErrInvalidSubmitKey will be returned if the submit key is invalid
 	ErrInvalidSubmitKey = errors.New("005003")
+
+	// ErrInvalidViewHistoriesInput will be returned if the input is invalid
+	ErrInvalidViewHistoriesInput = errors.New("005004")
 )
 
 var nilErr = &common.Error{
