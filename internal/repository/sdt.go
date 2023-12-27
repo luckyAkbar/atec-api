@@ -39,7 +39,7 @@ func (r *sdtrRepo) Create(ctx context.Context, test *model.SDTest, tx *gorm.DB) 
 
 func (r *sdtrRepo) FindByID(ctx context.Context, id uuid.UUID) (*model.SDTest, error) {
 	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
-		"func": "sdpRepo.FindByID",
+		"func": "sdtrRepo.FindByID",
 		"id":   id.String(),
 	})
 
@@ -58,7 +58,7 @@ func (r *sdtrRepo) FindByID(ctx context.Context, id uuid.UUID) (*model.SDTest, e
 
 func (r *sdtrRepo) Update(ctx context.Context, tr *model.SDTest, tx *gorm.DB) error {
 	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
-		"func":       "sdpRepo.Update",
+		"func":       "sdtrRepo.Update",
 		"testResult": helper.Dump(tr),
 	})
 
