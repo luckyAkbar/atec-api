@@ -47,7 +47,7 @@ func (r *sdtrRepo) FindByID(ctx context.Context, id uuid.UUID) (*model.SDTest, e
 	err := r.db.WithContext(ctx).Take(sdt, "id = ?", id).Error
 	switch err {
 	default:
-		logger.WithError(err).Error("failed to find sd package")
+		logger.WithError(err).Error("failed to find sd test result")
 		return nil, err
 	case gorm.ErrRecordNotFound:
 		return nil, ErrNotFound
