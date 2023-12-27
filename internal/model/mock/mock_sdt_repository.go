@@ -9,6 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	uuid "github.com/google/uuid"
 	model "github.com/luckyAkbar/atec-api/internal/model"
 	gorm "gorm.io/gorm"
 )
@@ -48,4 +49,33 @@ func (m *MockSDTestRepository) Create(arg0 context.Context, arg1 *model.SDTest, 
 func (mr *MockSDTestRepositoryMockRecorder) Create(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockSDTestRepository)(nil).Create), arg0, arg1, arg2)
+}
+
+// FindByID mocks base method.
+func (m *MockSDTestRepository) FindByID(arg0 context.Context, arg1 uuid.UUID) (*model.SDTest, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindByID", arg0, arg1)
+	ret0, _ := ret[0].(*model.SDTest)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindByID indicates an expected call of FindByID.
+func (mr *MockSDTestRepositoryMockRecorder) FindByID(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByID", reflect.TypeOf((*MockSDTestRepository)(nil).FindByID), arg0, arg1)
+}
+
+// Update mocks base method.
+func (m *MockSDTestRepository) Update(arg0 context.Context, arg1 *model.SDTest, arg2 *gorm.DB) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Update", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Update indicates an expected call of Update.
+func (mr *MockSDTestRepositoryMockRecorder) Update(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockSDTestRepository)(nil).Update), arg0, arg1, arg2)
 }

@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/luckyAkbar/atec-api/internal/repository"
 	"github.com/sirupsen/logrus"
 	"github.com/sweet-go/stdlib/helper"
+	"gopkg.in/guregu/null.v4"
 	"gorm.io/gorm"
 )
 
@@ -107,7 +109,121 @@ func (uc *sdtrUc) Initiate(ctx context.Context, input *model.InitiateSDTestInput
 
 	dbTrx.Commit()
 
-	return sdtest.ToRESTResponse(submitKeyPlain, pack.Name, pack.Package.RenderTestQuestions()), nilErr
+	return sdtest.ToInitiateSDTestOutput(submitKeyPlain, pack.Name, pack.Package.RenderTestQuestions()), nilErr
+}
+
+func (uc *sdtrUc) Submit(ctx context.Context, input *model.SubmitSDTestInput) (*model.SubmitSDTestOutput, *common.Error) {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"input": helper.Dump(input),
+	})
+
+	if err := input.Validate(); err != nil {
+		return nil, &common.Error{
+			Message: fmt.Sprintf("invalid input to submit test answer: %s", err.Error()),
+			Cause:   err,
+			Code:    http.StatusBadRequest,
+			Type:    ErrInvalidSDTestAnswer,
+		}
+	}
+
+	testData, err := uc.sdtrRepo.FindByID(ctx, input.TestID)
+	switch err {
+	default:
+		logger.WithError(err).Error("failed to find sd test by id")
+		return nil, &common.Error{
+			Message: "failed to find sd test data",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	case repository.ErrNotFound:
+		return nil, &common.Error{
+			Message: "sd test not found",
+			Cause:   err,
+			Code:    http.StatusNotFound,
+			Type:    ErrResourceNotFound,
+		}
+	case nil:
+		break
+	}
+
+	if testData.UserID.Valid {
+		requester := model.GetUserFromCtx(ctx)
+		if requester == nil || testData.UserID.UUID != requester.UserID {
+			return nil, &common.Error{
+				Message: "forbidden to submit other people sd test answer",
+				Cause:   errors.New("forbidden to submit other people sd test answer"),
+				Code:    http.StatusForbidden,
+				Type:    ErrForbiddenToSubmitSDTestAnswer,
+			}
+		}
+	}
+
+	if uc.sharedCryptor.ReverseSecureToken(input.SubmitKey) != testData.SubmitKey {
+		return nil, &common.Error{
+			Message: "invalid submit key",
+			Cause:   errors.New("invalid submit key"),
+			Code:    http.StatusBadRequest,
+			Type:    ErrInvalidSubmitKey,
+		}
+	}
+
+	if err := testData.IsStillAcceptingAnswer(); err != nil {
+		return nil, &common.Error{
+			Message: err.Error(),
+			Cause:   err,
+			Code:    http.StatusForbidden,
+			Type:    ErrForbiddenToSubmitSDTestAnswer,
+		}
+	}
+
+	pack, err := uc.sdpRepo.FindByID(ctx, testData.PackageID, false)
+	switch err {
+	default:
+		return nil, &common.Error{
+			Message: "failed to find sd package data",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	case repository.ErrNotFound:
+		return nil, &common.Error{
+			Message: "sd package not found",
+			Cause:   err,
+			Code:    http.StatusNotFound,
+			Type:    ErrResourceNotFound,
+		}
+	case nil:
+		break
+	}
+
+	grade, err := input.Answers.DoGradingProcess(pack.Package)
+	if err != nil {
+		return nil, &common.Error{
+			Message: fmt.Sprintf("test answer are invalid. details: %s", err.Error()),
+			Cause:   err,
+			Code:    http.StatusBadRequest,
+			Type:    ErrInvalidSDTestAnswer,
+		}
+	}
+
+	testData.Result = model.SDTestResult{
+		Result: grade,
+	}
+	testData.Answer = *input.Answers
+	now := time.Now().UTC()
+	testData.UpdatedAt = now
+	testData.FinishedAt = null.NewTime(now, true)
+	if err := uc.sdtrRepo.Update(ctx, testData, nil); err != nil {
+		return nil, &common.Error{
+			Message: "failed to save test result",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	}
+
+	return testData.ToSubmitTestOutput(pack.Name, input.SubmitKey, pack.Package.RenderTestQuestions()), nilErr
 }
 
 func (uc *sdtrUc) validateAndFetchPackageID(ctx context.Context, packageID, userID uuid.NullUUID) (*model.SpeechDelayPackage, *common.Error) {

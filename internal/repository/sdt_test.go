@@ -11,6 +11,8 @@ import (
 	"github.com/luckyAkbar/atec-api/internal/common"
 	"github.com/luckyAkbar/atec-api/internal/model"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/guregu/null.v4"
+	"gorm.io/gorm"
 )
 
 func TestSDTestResultRepository_Create(t *testing.T) {
@@ -69,4 +71,127 @@ func TestSDTestResultRepository_Create(t *testing.T) {
 		})
 	}
 
+}
+
+func TestSDTestResultRepository_FindByID(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	repo := NewSDTestResultRepository(kit.DB)
+	mock := kit.DBmock
+	ctx := context.Background()
+	id := uuid.New()
+
+	tests := []common.TestStructure{
+		{
+			Name: "ok",
+			MockFn: func() {
+				mock.ExpectQuery(`^SELECT .+ FROM "test_results" WHERE`).
+					WithArgs(id).
+					WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(id))
+			},
+			Run: func() {
+				email, err := repo.FindByID(ctx, id)
+				assert.NoError(t, err)
+
+				assert.Equal(t, email.ID, id)
+			},
+		},
+		{
+			Name: "not found",
+			MockFn: func() {
+				mock.ExpectQuery(`^SELECT .+ FROM "test_results" WHERE`).
+					WithArgs(id).
+					WillReturnError(gorm.ErrRecordNotFound)
+			},
+			Run: func() {
+				_, err := repo.FindByID(ctx, id)
+				assert.Error(t, err)
+
+				assert.Equal(t, err, ErrNotFound)
+			},
+		},
+		{
+			Name: "db return error",
+			MockFn: func() {
+				mock.ExpectQuery(`^SELECT .+ FROM "test_results" WHERE`).
+					WithArgs(id).
+					WillReturnError(errors.New("err db"))
+			},
+			Run: func() {
+				_, err := repo.FindByID(ctx, id)
+				assert.Error(t, err)
+				assert.Equal(t, err.Error(), "err db")
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
+
+func TestSDTestResultRepository_Update(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	repo := NewSDTestResultRepository(kit.DB)
+	ctx := context.Background()
+	mock := kit.DBmock
+
+	now := time.Now().UTC()
+
+	p := &model.SDTest{
+		ID:        uuid.New(),
+		PackageID: uuid.New(),
+		UserID:    uuid.NullUUID{UUID: uuid.New(), Valid: true},
+		Answer: model.SDTestAnswer{
+			TestAnswers: []*model.TestAnswer{},
+		},
+		Result:     model.SDTestResult{},
+		FinishedAt: null.NewTime(now, true),
+	}
+
+	tests := []common.TestStructure{
+		{
+			Name: "ok",
+			MockFn: func() {
+				mock.ExpectBegin()
+				mock.ExpectExec(`^UPDATE "test_results" SET`).
+					WithArgs(p.PackageID, p.UserID, sqlmock.AnyArg(), sqlmock.AnyArg(), p.FinishedAt, p.OpenUntil, p.SubmitKey, p.CreatedAt, sqlmock.AnyArg(), sqlmock.AnyArg(), p.ID).
+					WillReturnResult(sqlmock.NewResult(1, 1))
+					//WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(p.ID))
+				mock.ExpectCommit()
+			},
+			Run: func() {
+				err := repo.Update(ctx, p, nil)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name: "err db",
+			MockFn: func() {
+				mock.ExpectBegin()
+				mock.ExpectExec(`^UPDATE "test_results" SET`).
+					WithArgs(p.PackageID, p.UserID, sqlmock.AnyArg(), sqlmock.AnyArg(), p.FinishedAt, p.OpenUntil, p.SubmitKey, p.CreatedAt, sqlmock.AnyArg(), sqlmock.AnyArg(), p.ID).
+					WillReturnError(errors.New("err db"))
+					//WillReturnError(errors.New("err db"))
+				mock.ExpectRollback()
+			},
+			Run: func() {
+				err := repo.Update(ctx, p, nil)
+				assert.Error(t, err)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
 }

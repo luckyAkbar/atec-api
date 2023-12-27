@@ -90,6 +90,15 @@ var (
 
 	// ErrSDPackageAlreadyDeactivated will be returned when the sd package is inactive
 	ErrSDPackageAlreadyDeactivated = errors.New("004005")
+
+	// ErrInvalidSDTestAnswer will be returned if any error found when submitting sd test answer
+	ErrInvalidSDTestAnswer = errors.New("005001")
+
+	// ErrForbiddenToSubmitSDTestAnswer will be returned when the test is not accepting any answer
+	ErrForbiddenToSubmitSDTestAnswer = errors.New("005002")
+
+	// ErrInvalidSubmitKey will be returned if the submit key is invalid
+	ErrInvalidSubmitKey = errors.New("005003")
 )
 
 var nilErr = &common.Error{
