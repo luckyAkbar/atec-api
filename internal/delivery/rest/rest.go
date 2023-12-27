@@ -61,4 +61,5 @@ func (s *service) initRoutes() {
 	s.rootGroup.PATCH("/sdt/packages/:id/activation-status/", s.handleChangeSDPackageActivationStatus(), s.authMiddleware(true))
 
 	s.rootGroup.POST("/sdt/tests/", s.handleInitiateSDTest(), s.allowUnauthorizedAccess())
+	s.rootGroup.POST("/sdt/tests/submissions/", s.handleSubmitSDTestAnswer(), s.allowUnauthorizedAccess())
 }

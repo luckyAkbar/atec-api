@@ -45,6 +45,34 @@ func (s *service) handleInitiateSDTest() echo.HandlerFunc {
 				Data:    resp,
 			}, nil)
 		}
+	}
+}
 
+func (s *service) handleSubmitSDTestAnswer() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		var input = struct {
+			Request   *model.SubmitSDTestInput `json:"request"`
+			Signature string                   `json:"signature"`
+		}{}
+		if err := c.Bind(&input); err != nil || input.Request == nil {
+			logrus.Error(err)
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil)
+		}
+
+		resp, custerr := s.sdtestUsecase.Submit(c.Request().Context(), input.Request)
+		switch custerr.Type {
+		default:
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, custerr.GenerateStdlibHTTPResponse(nil), nil)
+		case usecase.ErrInternal:
+			logrus.WithContext(c.Request().Context()).WithError(custerr.Cause).Error("failed to handle submit sd test")
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrInternal.GenerateStdlibHTTPResponse(nil), nil)
+		case nil:
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, &stdhttp.StandardResponse{
+				Success: true,
+				Message: "success",
+				Status:  http.StatusOK,
+				Data:    resp,
+			}, nil)
+		}
 	}
 }
