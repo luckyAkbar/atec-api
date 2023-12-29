@@ -207,8 +207,14 @@ func (uc *sdtrUc) Submit(ctx context.Context, input *model.SubmitSDTestInput) (*
 		}
 	}
 
+	total := 0
+	for _, v := range grade {
+		total += v.Result
+	}
+
 	testData.Result = model.SDTestResult{
 		Result: grade,
+		Total:  total,
 	}
 	testData.Answer = *input.Answers
 	now := time.Now().UTC()

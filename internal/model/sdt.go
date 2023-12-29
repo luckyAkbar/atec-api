@@ -288,6 +288,7 @@ type SDTestGroupResult struct {
 // SDTestResult will hold the total result of sd test
 type SDTestResult struct {
 	Result []SDTestGroupResult `json:"result"`
+	Total  int                 `json:"total"`
 }
 
 // Scan is a function to scan database value to CreateSDTemplateInput
