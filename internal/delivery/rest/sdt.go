@@ -97,3 +97,28 @@ func (s *service) handleViewSDTestHistories() echo.HandlerFunc {
 		}, nil)
 	}
 }
+
+func (s *service) handleGetSDTestStatistic() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		input := c.Param("user_id")
+		id, err := uuid.Parse(input)
+		if err != nil {
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil)
+		}
+
+		resp, cerr := s.sdtestUsecase.Statistic(c.Request().Context(), id)
+		switch cerr.Type {
+		default:
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, cerr.GenerateStdlibHTTPResponse(nil), nil)
+		case usecase.ErrInternal:
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrInternal.GenerateStdlibHTTPResponse(nil), nil)
+		case nil:
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, &stdhttp.StandardResponse{
+				Success: true,
+				Message: "success",
+				Status:  http.StatusOK,
+				Data:    resp,
+			}, nil)
+		}
+	}
+}
