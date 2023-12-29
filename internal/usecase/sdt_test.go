@@ -1178,7 +1178,7 @@ func TestSDTestUsecase_Statistic(t *testing.T) {
 
 	ctx := context.Background()
 	uid := uuid.New()
-	randUid := uuid.New()
+	randUID := uuid.New()
 	userCtx := model.SetUserToCtx(ctx, model.AuthUser{
 		UserID: uid,
 		Role:   model.RoleUser,
@@ -1203,20 +1203,20 @@ func TestSDTestUsecase_Statistic(t *testing.T) {
 		{
 			Name: "admin can use any user id",
 			MockFn: func() {
-				sdtrRepo.EXPECT().Statistic(adminCtx, randUid).Times(1).Return([]model.SDTestStatistic{}, nil)
+				sdtrRepo.EXPECT().Statistic(adminCtx, randUID).Times(1).Return([]model.SDTestStatistic{}, nil)
 			},
 			Run: func() {
-				_, cerr := uc.Statistic(adminCtx, randUid)
+				_, cerr := uc.Statistic(adminCtx, randUID)
 				assert.NoError(t, cerr.Type)
 			},
 		},
 		{
 			Name: "err db",
 			MockFn: func() {
-				sdtrRepo.EXPECT().Statistic(adminCtx, randUid).Times(1).Return(nil, errors.New("err db"))
+				sdtrRepo.EXPECT().Statistic(adminCtx, randUID).Times(1).Return(nil, errors.New("err db"))
 			},
 			Run: func() {
-				_, cerr := uc.Statistic(adminCtx, randUid)
+				_, cerr := uc.Statistic(adminCtx, randUID)
 				assert.Error(t, cerr.Type)
 				assert.Equal(t, cerr.Type, ErrInternal)
 				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
@@ -1225,10 +1225,10 @@ func TestSDTestUsecase_Statistic(t *testing.T) {
 		{
 			Name: "not found on db",
 			MockFn: func() {
-				sdtrRepo.EXPECT().Statistic(adminCtx, randUid).Times(1).Return(nil, repository.ErrNotFound)
+				sdtrRepo.EXPECT().Statistic(adminCtx, randUID).Times(1).Return(nil, repository.ErrNotFound)
 			},
 			Run: func() {
-				_, cerr := uc.Statistic(adminCtx, randUid)
+				_, cerr := uc.Statistic(adminCtx, randUID)
 				assert.Error(t, cerr.Type)
 				assert.Equal(t, cerr.Type, ErrResourceNotFound)
 				assert.Equal(t, cerr.Code, http.StatusNotFound)
