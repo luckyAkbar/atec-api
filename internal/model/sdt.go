@@ -424,11 +424,31 @@ type ViewHistoriesOutput struct {
 	DeletedAt  gorm.DeletedAt `json:"deletedAt,omitempty"`
 }
 
+// StatsComponent will define what will be the statistic component
+type StatsComponent struct {
+	TestResultID   uuid.UUID `json:"testResultID"`
+	PackageID      uuid.UUID `json:"packageID"`
+	ResultPoint    int       `json:"resultPoint"`
+	PackageName    string    `json:"packageName"`
+	TestFinishedAt time.Time `json:"testFinishedAt"`
+}
+
+// SDTestStatistic will hold the structure of sd test statistic
+type SDTestStatistic struct {
+	TemplateID             uuid.UUID        `json:"templateID"`
+	TemplateName           string           `json:"templateName"`
+	IndicationThreshold    int              `json:"indicationThreshold"`
+	PositiveIndiationText  string           `json:"positiveIndicationText"`
+	NegativeIndicationText string           `json:"negativeIndicationText"`
+	Stats                  []StatsComponent `json:"stats"`
+}
+
 // SDTestUsecase usecase
 type SDTestUsecase interface {
 	Initiate(ctx context.Context, input *InitiateSDTestInput) (*InitiateSDTestOutput, *common.Error)
 	Submit(ctx context.Context, input *SubmitSDTestInput) (*SubmitSDTestOutput, *common.Error)
 	Histories(ctx context.Context, input *ViewHistoriesInput) ([]ViewHistoriesOutput, *common.Error)
+	Statistic(ctx context.Context, userID uuid.UUID) ([]SDTestStatistic, *common.Error)
 }
 
 // SDTestRepository repository
@@ -437,4 +457,5 @@ type SDTestRepository interface {
 	FindByID(ctx context.Context, id uuid.UUID) (*SDTest, error)
 	Update(ctx context.Context, test *SDTest, tx *gorm.DB) error
 	Search(ctx context.Context, input *ViewHistoriesInput) ([]*SDTest, error)
+	Statistic(ctx context.Context, userID uuid.UUID) ([]SDTestStatistic, error)
 }
