@@ -9,6 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	uuid "github.com/google/uuid"
 	common "github.com/luckyAkbar/atec-api/internal/common"
 	model "github.com/luckyAkbar/atec-api/internal/model"
 )
@@ -64,6 +65,21 @@ func (m *MockSDTestUsecase) Initiate(arg0 context.Context, arg1 *model.InitiateS
 func (mr *MockSDTestUsecaseMockRecorder) Initiate(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Initiate", reflect.TypeOf((*MockSDTestUsecase)(nil).Initiate), arg0, arg1)
+}
+
+// Statistic mocks base method.
+func (m *MockSDTestUsecase) Statistic(arg0 context.Context, arg1 uuid.UUID) ([]model.SDTestStatistic, *common.Error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Statistic", arg0, arg1)
+	ret0, _ := ret[0].([]model.SDTestStatistic)
+	ret1, _ := ret[1].(*common.Error)
+	return ret0, ret1
+}
+
+// Statistic indicates an expected call of Statistic.
+func (mr *MockSDTestUsecaseMockRecorder) Statistic(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Statistic", reflect.TypeOf((*MockSDTestUsecase)(nil).Statistic), arg0, arg1)
 }
 
 // Submit mocks base method.

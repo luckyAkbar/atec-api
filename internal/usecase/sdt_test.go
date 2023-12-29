@@ -1167,3 +1167,79 @@ func TestSDTestUsecase_Histories(t *testing.T) {
 		})
 	}
 }
+
+func TestSDTestUsecase_Statistic(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	sdtrRepo := mock.NewMockSDTestRepository(kit.Ctrl)
+	sdpRepo := mock.NewMockSDPackageRepository(kit.Ctrl)
+	sharedCryptor := commonMock.NewMockSharedCryptor(kit.Ctrl)
+
+	ctx := context.Background()
+	uid := uuid.New()
+	randUid := uuid.New()
+	userCtx := model.SetUserToCtx(ctx, model.AuthUser{
+		UserID: uid,
+		Role:   model.RoleUser,
+	})
+	adminCtx := model.SetUserToCtx(ctx, model.AuthUser{
+		Role: model.RoleAdmin,
+	})
+
+	uc := NewSDTestResultUsecase(sdtrRepo, sdpRepo, sharedCryptor, nil)
+
+	tests := []common.TestStructure{
+		{
+			Name: "non admin should only be able to view his own statistic",
+			MockFn: func() {
+				sdtrRepo.EXPECT().Statistic(userCtx, uid).Times(1).Return([]model.SDTestStatistic{}, nil)
+			},
+			Run: func() {
+				_, cerr := uc.Statistic(userCtx, uuid.New())
+				assert.NoError(t, cerr.Type)
+			},
+		},
+		{
+			Name: "admin can use any user id",
+			MockFn: func() {
+				sdtrRepo.EXPECT().Statistic(adminCtx, randUid).Times(1).Return([]model.SDTestStatistic{}, nil)
+			},
+			Run: func() {
+				_, cerr := uc.Statistic(adminCtx, randUid)
+				assert.NoError(t, cerr.Type)
+			},
+		},
+		{
+			Name: "err db",
+			MockFn: func() {
+				sdtrRepo.EXPECT().Statistic(adminCtx, randUid).Times(1).Return(nil, errors.New("err db"))
+			},
+			Run: func() {
+				_, cerr := uc.Statistic(adminCtx, randUid)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrInternal)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
+			},
+		},
+		{
+			Name: "not found on db",
+			MockFn: func() {
+				sdtrRepo.EXPECT().Statistic(adminCtx, randUid).Times(1).Return(nil, repository.ErrNotFound)
+			},
+			Run: func() {
+				_, cerr := uc.Statistic(adminCtx, randUid)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrResourceNotFound)
+				assert.Equal(t, cerr.Code, http.StatusNotFound)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
