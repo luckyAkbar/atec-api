@@ -81,6 +81,21 @@ func (mr *MockSDTestRepositoryMockRecorder) Search(arg0, arg1 interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Search", reflect.TypeOf((*MockSDTestRepository)(nil).Search), arg0, arg1)
 }
 
+// Statistic mocks base method.
+func (m *MockSDTestRepository) Statistic(arg0 context.Context, arg1 uuid.UUID) ([]model.SDTestStatistic, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Statistic", arg0, arg1)
+	ret0, _ := ret[0].([]model.SDTestStatistic)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Statistic indicates an expected call of Statistic.
+func (mr *MockSDTestRepositoryMockRecorder) Statistic(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Statistic", reflect.TypeOf((*MockSDTestRepository)(nil).Statistic), arg0, arg1)
+}
+
 // Update mocks base method.
 func (m *MockSDTestRepository) Update(arg0 context.Context, arg1 *model.SDTest, arg2 *gorm.DB) error {
 	m.ctrl.T.Helper()

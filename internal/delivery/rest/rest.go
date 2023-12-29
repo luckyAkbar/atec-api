@@ -63,4 +63,5 @@ func (s *service) initRoutes() {
 	s.rootGroup.POST("/sdt/tests/", s.handleInitiateSDTest(), s.allowUnauthorizedAccess())
 	s.rootGroup.POST("/sdt/tests/submissions/", s.handleSubmitSDTestAnswer(), s.allowUnauthorizedAccess())
 	s.rootGroup.GET("/sdt/tests/submissions/", s.handleViewSDTestHistories(), s.authMiddleware(false))
+	s.rootGroup.GET("/sdt/results/statistics/:user_id/", s.handleGetSDTestStatistic(), s.authMiddleware(false))
 }

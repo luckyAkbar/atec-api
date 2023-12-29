@@ -207,8 +207,14 @@ func (uc *sdtrUc) Submit(ctx context.Context, input *model.SubmitSDTestInput) (*
 		}
 	}
 
+	total := 0
+	for _, v := range grade {
+		total += v.Result
+	}
+
 	testData.Result = model.SDTestResult{
 		Result: grade,
+		Total:  total,
 	}
 	testData.Answer = *input.Answers
 	now := time.Now().UTC()
@@ -255,6 +261,39 @@ func (uc *sdtrUc) Histories(ctx context.Context, input *model.ViewHistoriesInput
 	}
 
 	return resp, nilErr
+}
+
+func (uc *sdtrUc) Statistic(ctx context.Context, userID uuid.UUID) ([]model.SDTestStatistic, *common.Error) {
+	logger := logrus.WithFields(logrus.Fields{
+		"func":  "sdtrUc.Statistic",
+		"input": userID,
+	})
+
+	requester := model.GetUserFromCtx(ctx)
+	if !requester.IsAdmin() {
+		userID = requester.UserID
+	}
+
+	res, err := uc.sdtrRepo.Statistic(ctx, userID)
+	switch err {
+	default:
+		logger.WithError(err).Error("failed to get sd test statistic")
+		return nil, &common.Error{
+			Message: "failed to get sd test statistic",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	case repository.ErrNotFound:
+		return nil, &common.Error{
+			Message: "no statistic found for this user",
+			Cause:   err,
+			Code:    http.StatusNotFound,
+			Type:    ErrResourceNotFound,
+		}
+	case nil:
+		return res, nilErr
+	}
 }
 
 func (uc *sdtrUc) validateAndFetchPackageID(ctx context.Context, packageID, userID uuid.NullUUID) (*model.SpeechDelayPackage, *common.Error) {

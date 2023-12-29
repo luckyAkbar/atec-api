@@ -354,3 +354,54 @@ func TestSDTestResultRepository_Search(t *testing.T) {
 		})
 	}
 }
+
+func TestSDTestResultRepository_Statistic(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	repo := NewSDTestResultRepository(kit.DB)
+	ctx := context.Background()
+	uid := uuid.New()
+	mock := kit.DBmock
+
+	tests := []common.TestStructure{
+		{
+			Name: "db err",
+			MockFn: func() {
+				mock.ExpectQuery(`^SELECT .+ FROM test_results`).WithArgs(uid).WillReturnError(errors.New("err db"))
+			},
+			Run: func() {
+				_, err := repo.Statistic(ctx, uid)
+				assert.Error(t, err)
+			},
+		},
+		{
+			Name: "0 data returned must return errnotfound",
+			MockFn: func() {
+				mock.ExpectQuery(`^SELECT .+ FROM test_results`).WithArgs(uid).WillReturnRows(sqlmock.NewRows([]string{"template_id"}))
+			},
+			Run: func() {
+				_, err := repo.Statistic(ctx, uid)
+				assert.Error(t, err)
+				assert.Equal(t, err, ErrNotFound)
+			},
+		},
+		{
+			Name: "ok",
+			MockFn: func() {
+				mock.ExpectQuery(`^SELECT .+ FROM test_results`).WithArgs(uid).WillReturnRows(sqlmock.NewRows([]string{"template_id"}).AddRow(uuid.New()))
+			},
+			Run: func() {
+				_, err := repo.Statistic(ctx, uid)
+				assert.NoError(t, err)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
