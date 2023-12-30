@@ -378,4 +378,5 @@ type SDPackageRepository interface {
 	UndoDelete(ctx context.Context, id uuid.UUID) (*SpeechDelayPackage, error)
 	FindLeastUsedPackageIDByUserID(ctx context.Context, userID uuid.UUID) (uuid.UUID, error)
 	FindRandomActivePackage(ctx context.Context) (*SpeechDelayPackage, error)
+	GetTemplateByPackageID(ctx context.Context, packageID uuid.UUID) (*SpeechDelayTemplate, error)
 }

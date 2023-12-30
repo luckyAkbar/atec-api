@@ -224,6 +224,28 @@ func (r *sdpRepo) FindLeastUsedPackageIDByUserID(ctx context.Context, userID uui
 	return findTheLeastUsedPackage(tpc)
 }
 
+func (r *sdpRepo) GetTemplateByPackageID(ctx context.Context, packageID uuid.UUID) (*model.SpeechDelayTemplate, error) {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func":  "sdpRepo.GetTemplateByPackageID",
+		"input": helper.Dump(packageID),
+	})
+
+	pack := &model.SpeechDelayPackage{}
+	tem := &model.SpeechDelayTemplate{}
+	err := r.db.WithContext(ctx).
+		Where("id = (?)", r.db.Table(pack.TableName()).Select("template_id").Where("id = (?)", packageID)).
+		Take(&tem).Error
+	switch err {
+	default:
+		logger.WithError(err).Error("failed to find template by sd package id")
+		return nil, err
+	case gorm.ErrRecordNotFound:
+		return nil, ErrNotFound
+	case nil:
+		return tem, nil
+	}
+}
+
 // will be used to find the least used package
 // originally made to reduce the code complexity in order to pass the linter
 func findTheLeastUsedPackage(tpc []testPackageCount) (uuid.UUID, error) {

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/golang/freetype/truetype"
 	"github.com/google/uuid"
 	"github.com/luckyAkbar/atec-api/internal/common"
 	"github.com/luckyAkbar/atec-api/internal/model"
@@ -22,15 +23,17 @@ type sdtrUc struct {
 	sdpRepo       model.SDPackageRepository
 	sharedCryptor common.SharedCryptor
 	tx            *gorm.DB
+	font          *truetype.Font
 }
 
 // NewSDTestResultUsecase create new sd test usecase. satisfy model.SDTestUsecase
-func NewSDTestResultUsecase(sdtrRepo model.SDTestRepository, sdpRepo model.SDPackageRepository, sharedCryptor common.SharedCryptor, tx *gorm.DB) model.SDTestUsecase {
+func NewSDTestResultUsecase(sdtrRepo model.SDTestRepository, sdpRepo model.SDPackageRepository, sharedCryptor common.SharedCryptor, tx *gorm.DB, f *truetype.Font) model.SDTestUsecase {
 	return &sdtrUc{
 		sdtrRepo:      sdtrRepo,
 		sdpRepo:       sdpRepo,
 		sharedCryptor: sharedCryptor,
 		tx:            tx,
+		font:          f,
 	}
 }
 
@@ -294,6 +297,92 @@ func (uc *sdtrUc) Statistic(ctx context.Context, userID uuid.UUID) ([]model.SDTe
 	case nil:
 		return res, nilErr
 	}
+}
+
+func (uc *sdtrUc) DownloadResult(ctx context.Context, tid uuid.UUID) (*model.ImageResult, *common.Error) {
+	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
+		"func":  "sdtrUc.DownloadResult",
+		"input": tid.String(),
+	})
+
+	testRes, err := uc.sdtrRepo.FindByID(ctx, tid)
+	switch err {
+	default:
+		logger.WithError(err).Error("failed to find sd test result by id")
+		return nil, &common.Error{
+			Message: "failed to find sd test result",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	case repository.ErrNotFound:
+		return nil, &common.Error{
+			Message: "sd test result not found",
+			Cause:   err,
+			Code:    http.StatusNotFound,
+			Type:    ErrResourceNotFound,
+		}
+	case nil:
+		break
+	}
+
+	if testRes.UserID.Valid {
+		requester := model.GetUserFromCtx(ctx)
+		if requester == nil || (!requester.IsAdmin() && testRes.UserID.UUID != requester.UserID) {
+			return nil, &common.Error{
+				Message: "forbidden to download other people sd test result",
+				Cause:   errors.New("forbidden to download other people sd test result"),
+				Code:    http.StatusForbidden,
+				Type:    ErrForbiddenDownloadSDTestResult,
+			}
+		}
+	}
+
+	if !testRes.FinishedAt.Valid {
+		return nil, &common.Error{
+			Message: "sd test is still not answered yet",
+			Cause:   errors.New("sd test is still open"),
+			Code:    http.StatusForbidden,
+			Type:    ErrForbiddenDownloadSDTestResult,
+		}
+	}
+
+	tem, err := uc.sdpRepo.GetTemplateByPackageID(ctx, testRes.PackageID)
+	switch err {
+	default:
+		logger.WithError(err).Error("failed to find sd test template by id")
+		return nil, &common.Error{
+			Message: "failed to find sd test template",
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	case repository.ErrNotFound:
+		return nil, &common.Error{
+			Message: "sd test template not found",
+			Cause:   err,
+			Code:    http.StatusNotFound,
+			Type:    ErrResourceNotFound,
+		}
+	case nil:
+		break
+	}
+
+	var indicationText string
+	if testRes.Result.Total < tem.Template.IndicationThreshold {
+		indicationText = tem.Template.PositiveIndiationText
+	} else {
+		indicationText = tem.Template.NegativeIndicationText
+	}
+
+	resGen := model.NewResultGenerator(uc.font, &model.SDResultImageGenerationOpts{
+		Title:          "Hasil Score ATEC",
+		Result:         testRes.Result,
+		TestID:         testRes.ID,
+		IndicationText: indicationText,
+	})
+
+	return resGen.GenerateJPEG(), nilErr
 }
 
 func (uc *sdtrUc) validateAndFetchPackageID(ctx context.Context, packageID, userID uuid.NullUUID) (*model.SpeechDelayPackage, *common.Error) {
