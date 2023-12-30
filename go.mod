@@ -6,6 +6,7 @@ require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/alicebob/miniredis/v2 v2.30.1
 	github.com/go-playground/validator/v10 v10.16.0
+	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
 	github.com/hibiken/asynq v0.24.1
@@ -22,6 +23,7 @@ require (
 	github.com/sweet-go/stdlib v1.2.1-0.20231129072459-a75600e4a037
 	golang.org/x/crypto v0.7.0
 	golang.org/x/exp v0.0.0-20231219180239-dc181d75b848
+	golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8
 	golang.org/x/time v0.3.0
 	gopkg.in/guregu/null.v4 v4.0.0
 	gorm.io/driver/postgres v1.5.0
