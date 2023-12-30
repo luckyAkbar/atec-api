@@ -650,3 +650,59 @@ func TestSDPackage_FindLeastUsedPackageIDByUserID(t *testing.T) {
 		})
 	}
 }
+
+func TestSDPackage_GetTemplateByPackageID(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	repo := NewSDPackageRepository(kit.DB)
+	ctx := context.Background()
+	mock := kit.DBmock
+	pid := uuid.New()
+	tid := uuid.New()
+
+	tests := []common.TestStructure{
+		{
+			Name: "err db",
+			MockFn: func() {
+				mock.ExpectQuery(`^SELECT .+ FROM "test_templates"`).
+					WithArgs(pid).WillReturnError(errors.New("err db"))
+			},
+			Run: func() {
+				_, err := repo.GetTemplateByPackageID(ctx, pid)
+				assert.Error(t, err)
+			},
+		},
+		{
+			Name: "not found",
+			MockFn: func() {
+				mock.ExpectQuery(`^SELECT .+ FROM "test_templates"`).
+					WithArgs(pid).WillReturnError(gorm.ErrRecordNotFound)
+			},
+			Run: func() {
+				_, err := repo.GetTemplateByPackageID(ctx, pid)
+				assert.Error(t, err)
+				assert.Equal(t, err, ErrNotFound)
+			},
+		},
+		{
+			Name: "ok",
+			MockFn: func() {
+				mock.ExpectQuery(`^SELECT .+ FROM "test_templates"`).
+					WithArgs(pid).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(tid))
+			},
+			Run: func() {
+				res, err := repo.GetTemplateByPackageID(ctx, pid)
+				assert.NoError(t, err)
+				assert.Equal(t, res.ID, tid)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}

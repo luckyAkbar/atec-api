@@ -37,6 +37,21 @@ func (m *MockSDTestUsecase) EXPECT() *MockSDTestUsecaseMockRecorder {
 	return m.recorder
 }
 
+// DownloadResult mocks base method.
+func (m *MockSDTestUsecase) DownloadResult(arg0 context.Context, arg1 uuid.UUID) (*model.ImageResult, *common.Error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DownloadResult", arg0, arg1)
+	ret0, _ := ret[0].(*model.ImageResult)
+	ret1, _ := ret[1].(*common.Error)
+	return ret0, ret1
+}
+
+// DownloadResult indicates an expected call of DownloadResult.
+func (mr *MockSDTestUsecaseMockRecorder) DownloadResult(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DownloadResult", reflect.TypeOf((*MockSDTestUsecase)(nil).DownloadResult), arg0, arg1)
+}
+
 // Histories mocks base method.
 func (m *MockSDTestUsecase) Histories(arg0 context.Context, arg1 *model.ViewHistoriesInput) ([]model.ViewHistoriesOutput, *common.Error) {
 	m.ctrl.T.Helper()
