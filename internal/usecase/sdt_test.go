@@ -39,7 +39,7 @@ func TestSDTestUsecase_Initiate(t *testing.T) {
 		Package:  &model.SDPackage{},
 	}
 
-	uc := NewSDTestResultUsecase(sdtrRepo, sdpRepo, sharedCryptor, db)
+	uc := NewSDTestResultUsecase(sdtrRepo, sdpRepo, sharedCryptor, db, nil)
 
 	tests := []common.TestStructure{
 		{
@@ -309,7 +309,7 @@ func TestSDTestUsecase_Submit(t *testing.T) {
 
 	authCtx := model.SetUserToCtx(ctx, user)
 
-	uc := NewSDTestResultUsecase(sdtrRepo, sdpRepo, sharedCryptor, db)
+	uc := NewSDTestResultUsecase(sdtrRepo, sdpRepo, sharedCryptor, db, nil)
 
 	tests := []common.TestStructure{
 		{
@@ -854,7 +854,7 @@ func TestSDTestUsecase_Histories(t *testing.T) {
 	pid := uuid.New()
 	now := time.Now().UTC()
 
-	uc := NewSDTestResultUsecase(sdtrRepo, sdpRepo, sharedCryptor, db)
+	uc := NewSDTestResultUsecase(sdtrRepo, sdpRepo, sharedCryptor, db, nil)
 
 	tests := []common.TestStructure{
 		{
@@ -1187,7 +1187,7 @@ func TestSDTestUsecase_Statistic(t *testing.T) {
 		Role: model.RoleAdmin,
 	})
 
-	uc := NewSDTestResultUsecase(sdtrRepo, sdpRepo, sharedCryptor, nil)
+	uc := NewSDTestResultUsecase(sdtrRepo, sdpRepo, sharedCryptor, nil, nil)
 
 	tests := []common.TestStructure{
 		{
