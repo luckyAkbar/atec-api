@@ -15,4 +15,7 @@ COPY private.pem .
 RUN mkdir db
 COPY db db
 
+RUN mkdir assets
+COPY assets assets
+
 COPY --from=builder /app/main /app
