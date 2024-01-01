@@ -369,7 +369,7 @@ func (uc *sdtrUc) DownloadResult(ctx context.Context, tid uuid.UUID) (*model.Ima
 	}
 
 	var indicationText string
-	if testRes.Result.Total < tem.Template.IndicationThreshold {
+	if testRes.Result.Total >= tem.Template.IndicationThreshold {
 		indicationText = tem.Template.PositiveIndiationText
 	} else {
 		indicationText = tem.Template.NegativeIndicationText
