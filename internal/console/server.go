@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/golang/freetype/truetype"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/luckyAkbar/atec-api/internal/common"
@@ -39,6 +40,15 @@ func init() {
 
 func serverFn(_ *cobra.Command, _ []string) {
 	key, err := encryption.ReadKeyFromFile("./private.pem")
+	if err != nil {
+		panic(err)
+	}
+
+	fontBytes, err := os.ReadFile("./assets/font.ttf")
+	if err != nil {
+		panic(err)
+	}
+	f, err := truetype.Parse(fontBytes)
 	if err != nil {
 		panic(err)
 	}
@@ -88,7 +98,7 @@ func serverFn(_ *cobra.Command, _ []string) {
 	authUsecase := usecase.NewAuthUsecase(accessTokenRepo, userRepo, sharedCryptor)
 	sdtemplateUsecase := usecase.NewSDTemplateUsecase(sdtemplateRepo)
 	sdpackageUsecase := usecase.NewSDPackageUsecase(sdpackageRepo, sdtemplateRepo)
-	sdtUsecase := usecase.NewSDTestResultUsecase(sdtRepo, sdpackageRepo, sharedCryptor, db.PostgresDB)
+	sdtUsecase := usecase.NewSDTestResultUsecase(sdtRepo, sdpackageRepo, sharedCryptor, db.PostgresDB, f)
 
 	httpServer := echo.New()
 

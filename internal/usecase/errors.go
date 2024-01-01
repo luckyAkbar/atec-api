@@ -102,6 +102,9 @@ var (
 
 	// ErrInvalidViewHistoriesInput will be returned if the input is invalid
 	ErrInvalidViewHistoriesInput = errors.New("005004")
+
+	// ErrForbiddenDownloadSDTestResult will be returned when access blocked for sd test result is
+	ErrForbiddenDownloadSDTestResult = errors.New("005005")
 )
 
 var nilErr = &common.Error{

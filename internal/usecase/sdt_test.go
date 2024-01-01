@@ -39,7 +39,7 @@ func TestSDTestUsecase_Initiate(t *testing.T) {
 		Package:  &model.SDPackage{},
 	}
 
-	uc := NewSDTestResultUsecase(sdtrRepo, sdpRepo, sharedCryptor, db)
+	uc := NewSDTestResultUsecase(sdtrRepo, sdpRepo, sharedCryptor, db, nil)
 
 	tests := []common.TestStructure{
 		{
@@ -309,7 +309,7 @@ func TestSDTestUsecase_Submit(t *testing.T) {
 
 	authCtx := model.SetUserToCtx(ctx, user)
 
-	uc := NewSDTestResultUsecase(sdtrRepo, sdpRepo, sharedCryptor, db)
+	uc := NewSDTestResultUsecase(sdtrRepo, sdpRepo, sharedCryptor, db, nil)
 
 	tests := []common.TestStructure{
 		{
@@ -854,7 +854,7 @@ func TestSDTestUsecase_Histories(t *testing.T) {
 	pid := uuid.New()
 	now := time.Now().UTC()
 
-	uc := NewSDTestResultUsecase(sdtrRepo, sdpRepo, sharedCryptor, db)
+	uc := NewSDTestResultUsecase(sdtrRepo, sdpRepo, sharedCryptor, db, nil)
 
 	tests := []common.TestStructure{
 		{
@@ -1178,7 +1178,7 @@ func TestSDTestUsecase_Statistic(t *testing.T) {
 
 	ctx := context.Background()
 	uid := uuid.New()
-	randUid := uuid.New()
+	randUID := uuid.New()
 	userCtx := model.SetUserToCtx(ctx, model.AuthUser{
 		UserID: uid,
 		Role:   model.RoleUser,
@@ -1187,7 +1187,7 @@ func TestSDTestUsecase_Statistic(t *testing.T) {
 		Role: model.RoleAdmin,
 	})
 
-	uc := NewSDTestResultUsecase(sdtrRepo, sdpRepo, sharedCryptor, nil)
+	uc := NewSDTestResultUsecase(sdtrRepo, sdpRepo, sharedCryptor, nil, nil)
 
 	tests := []common.TestStructure{
 		{
@@ -1203,20 +1203,20 @@ func TestSDTestUsecase_Statistic(t *testing.T) {
 		{
 			Name: "admin can use any user id",
 			MockFn: func() {
-				sdtrRepo.EXPECT().Statistic(adminCtx, randUid).Times(1).Return([]model.SDTestStatistic{}, nil)
+				sdtrRepo.EXPECT().Statistic(adminCtx, randUID).Times(1).Return([]model.SDTestStatistic{}, nil)
 			},
 			Run: func() {
-				_, cerr := uc.Statistic(adminCtx, randUid)
+				_, cerr := uc.Statistic(adminCtx, randUID)
 				assert.NoError(t, cerr.Type)
 			},
 		},
 		{
 			Name: "err db",
 			MockFn: func() {
-				sdtrRepo.EXPECT().Statistic(adminCtx, randUid).Times(1).Return(nil, errors.New("err db"))
+				sdtrRepo.EXPECT().Statistic(adminCtx, randUID).Times(1).Return(nil, errors.New("err db"))
 			},
 			Run: func() {
-				_, cerr := uc.Statistic(adminCtx, randUid)
+				_, cerr := uc.Statistic(adminCtx, randUID)
 				assert.Error(t, cerr.Type)
 				assert.Equal(t, cerr.Type, ErrInternal)
 				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
@@ -1225,13 +1225,170 @@ func TestSDTestUsecase_Statistic(t *testing.T) {
 		{
 			Name: "not found on db",
 			MockFn: func() {
-				sdtrRepo.EXPECT().Statistic(adminCtx, randUid).Times(1).Return(nil, repository.ErrNotFound)
+				sdtrRepo.EXPECT().Statistic(adminCtx, randUID).Times(1).Return(nil, repository.ErrNotFound)
 			},
 			Run: func() {
-				_, cerr := uc.Statistic(adminCtx, randUid)
+				_, cerr := uc.Statistic(adminCtx, randUID)
 				assert.Error(t, cerr.Type)
 				assert.Equal(t, cerr.Type, ErrResourceNotFound)
 				assert.Equal(t, cerr.Code, http.StatusNotFound)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
+
+func TestSDTestUsecase_DownloadResult(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	sdtrRepo := mock.NewMockSDTestRepository(kit.Ctrl)
+	sdpRepo := mock.NewMockSDPackageRepository(kit.Ctrl)
+	sharedCryptor := commonMock.NewMockSharedCryptor(kit.Ctrl)
+
+	ctx := context.Background()
+	tid := uuid.New()
+	pid := uuid.New()
+
+	randCtx := model.SetUserToCtx(ctx, model.AuthUser{
+		UserID:      uuid.New(),
+		AccessToken: "token",
+		Role:        model.RoleUser,
+	})
+
+	testOwnser := model.AuthUser{
+		UserID:      uuid.New(),
+		AccessToken: "token",
+		Role:        model.RoleUser,
+	}
+	ownerCtx := model.SetUserToCtx(ctx, testOwnser)
+
+	admin := model.AuthUser{
+		UserID:      uuid.New(),
+		AccessToken: "token",
+		Role:        model.RoleAdmin,
+	}
+	adminCtx := model.SetUserToCtx(ctx, admin)
+
+	uc := NewSDTestResultUsecase(sdtrRepo, sdpRepo, sharedCryptor, nil, nil)
+
+	tests := []common.TestStructure{
+		{
+			Name: "failed to find sd test result",
+			MockFn: func() {
+				sdtrRepo.EXPECT().FindByID(ctx, tid).Times(1).Return(nil, errors.New("err db"))
+			},
+			Run: func() {
+				_, cerr := uc.DownloadResult(ctx, tid)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrInternal)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
+
+			},
+		},
+		{
+			Name: "not found",
+			MockFn: func() {
+				sdtrRepo.EXPECT().FindByID(ctx, tid).Times(1).Return(nil, repository.ErrNotFound)
+			},
+			Run: func() {
+				_, cerr := uc.DownloadResult(ctx, tid)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrResourceNotFound)
+				assert.Equal(t, cerr.Code, http.StatusNotFound)
+
+			},
+		},
+		{
+			Name: "test has owner, but accessed by unregistered user",
+			MockFn: func() {
+				sdtrRepo.EXPECT().FindByID(ctx, tid).Times(1).Return(&model.SDTest{
+					ID:     tid,
+					UserID: uuid.NullUUID{UUID: uuid.New(), Valid: true},
+				}, nil)
+			},
+			Run: func() {
+				_, cerr := uc.DownloadResult(ctx, tid)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrForbiddenDownloadSDTestResult)
+				assert.Equal(t, cerr.Code, http.StatusForbidden)
+
+			},
+		},
+		{
+			Name: "test has owner, but was accessed by different user",
+			MockFn: func() {
+				sdtrRepo.EXPECT().FindByID(randCtx, tid).Times(1).Return(&model.SDTest{
+					ID:     tid,
+					UserID: uuid.NullUUID{UUID: uuid.New(), Valid: true},
+				}, nil)
+			},
+			Run: func() {
+				_, cerr := uc.DownloadResult(randCtx, tid)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrForbiddenDownloadSDTestResult)
+				assert.Equal(t, cerr.Code, http.StatusForbidden)
+
+			},
+		},
+		{
+			Name: "test is still not answered",
+			MockFn: func() {
+				sdtrRepo.EXPECT().FindByID(ownerCtx, tid).Times(1).Return(&model.SDTest{
+					ID:     tid,
+					UserID: uuid.NullUUID{UUID: testOwnser.UserID, Valid: true},
+				}, nil)
+			},
+			Run: func() {
+				_, cerr := uc.DownloadResult(ownerCtx, tid)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrForbiddenDownloadSDTestResult)
+				assert.Equal(t, cerr.Code, http.StatusForbidden)
+
+			},
+		},
+		{
+			Name: "failed to find template",
+			MockFn: func() {
+				sdtrRepo.EXPECT().FindByID(adminCtx, tid).Times(1).Return(&model.SDTest{
+					ID:         tid,
+					UserID:     uuid.NullUUID{UUID: testOwnser.UserID, Valid: true},
+					FinishedAt: null.NewTime(time.Now().Add(time.Hour*-1).UTC(), true),
+					PackageID:  pid,
+				}, nil)
+				sdpRepo.EXPECT().GetTemplateByPackageID(adminCtx, pid).Times(1).Return(nil, errors.New("err db"))
+			},
+			Run: func() {
+				_, cerr := uc.DownloadResult(adminCtx, tid)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrInternal)
+				assert.Equal(t, cerr.Code, http.StatusInternalServerError)
+
+			},
+		},
+		{
+			Name: "somehow template not found",
+			MockFn: func() {
+				sdtrRepo.EXPECT().FindByID(adminCtx, tid).Times(1).Return(&model.SDTest{
+					ID:         tid,
+					UserID:     uuid.NullUUID{UUID: testOwnser.UserID, Valid: true},
+					FinishedAt: null.NewTime(time.Now().Add(time.Hour*-1).UTC(), true),
+					PackageID:  pid,
+				}, nil)
+				sdpRepo.EXPECT().GetTemplateByPackageID(adminCtx, pid).Times(1).Return(nil, repository.ErrNotFound)
+			},
+			Run: func() {
+				_, cerr := uc.DownloadResult(adminCtx, tid)
+				assert.Error(t, cerr.Type)
+				assert.Equal(t, cerr.Type, ErrResourceNotFound)
+				assert.Equal(t, cerr.Code, http.StatusNotFound)
+
 			},
 		},
 	}

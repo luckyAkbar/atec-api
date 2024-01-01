@@ -450,6 +450,7 @@ type SDTestUsecase interface {
 	Submit(ctx context.Context, input *SubmitSDTestInput) (*SubmitSDTestOutput, *common.Error)
 	Histories(ctx context.Context, input *ViewHistoriesInput) ([]ViewHistoriesOutput, *common.Error)
 	Statistic(ctx context.Context, userID uuid.UUID) ([]SDTestStatistic, *common.Error)
+	DownloadResult(ctx context.Context, tid uuid.UUID) (*ImageResult, *common.Error)
 }
 
 // SDTestRepository repository

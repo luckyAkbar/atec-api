@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -119,6 +120,28 @@ func (s *service) handleGetSDTestStatistic() echo.HandlerFunc {
 				Status:  http.StatusOK,
 				Data:    resp,
 			}, nil)
+		}
+	}
+}
+
+func (s *service) handleDownloadTestResult() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		input := c.Param("id")
+		id, err := uuid.Parse(input)
+		if err != nil {
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrBadRequest.GenerateStdlibHTTPResponse(nil), nil)
+		}
+
+		res, cerr := s.sdtestUsecase.DownloadResult(c.Request().Context(), id)
+		switch cerr.Type {
+		default:
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, cerr.GenerateStdlibHTTPResponse(nil), nil)
+		case usecase.ErrInternal:
+			return s.apiResponseGenerator.GenerateEchoAPIResponse(c, ErrInternal.GenerateStdlibHTTPResponse(nil), nil)
+		case nil:
+			c.Response().Header().Set("Content-Type", res.ContentType)
+			c.Response().Header().Set("Content-Length", fmt.Sprintf("%d", res.Buffer.Len()))
+			return c.Blob(http.StatusOK, res.ContentType, res.Buffer.Bytes())
 		}
 	}
 }
