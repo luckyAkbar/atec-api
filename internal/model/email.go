@@ -43,7 +43,7 @@ func (e *Email) GenericReceipientsTo() []mail.GenericReceipient {
 // GenericReceipientsCc convert Cc to model.GenericReceipient
 func (e *Email) GenericReceipientsCc() []mail.GenericReceipient {
 	var recipients []mail.GenericReceipient
-	for _, r := range e.To {
+	for _, r := range e.Cc {
 		recipients = append(recipients, mail.GenericReceipient{
 			Name:  r,
 			Email: r,
@@ -55,7 +55,7 @@ func (e *Email) GenericReceipientsCc() []mail.GenericReceipient {
 // GenericReceipientsBcc convert Bcc to model.GenericReceipient
 func (e *Email) GenericReceipientsBcc() []mail.GenericReceipient {
 	var recipients []mail.GenericReceipient
-	for _, r := range e.To {
+	for _, r := range e.Bcc {
 		recipients = append(recipients, mail.GenericReceipient{
 			Name:  r,
 			Email: r,

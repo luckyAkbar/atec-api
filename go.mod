@@ -20,7 +20,7 @@ require (
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/viper v1.3.2
 	github.com/stretchr/testify v1.8.2
-	github.com/sweet-go/stdlib v1.2.1-0.20231129072459-a75600e4a037
+	github.com/sweet-go/stdlib v1.2.1-0.20240109123030-b23630ff1149
 	golang.org/x/crypto v0.7.0
 	golang.org/x/exp v0.0.0-20231219180239-dc181d75b848
 	golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8
