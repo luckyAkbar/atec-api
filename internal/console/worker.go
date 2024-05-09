@@ -7,14 +7,17 @@ import (
 	"time"
 
 	"github.com/hibiken/asynq"
+	"github.com/luckyAkbar/atec-api/internal/common"
 	"github.com/luckyAkbar/atec-api/internal/config"
 	"github.com/luckyAkbar/atec-api/internal/db"
 	"github.com/luckyAkbar/atec-api/internal/repository"
 	"github.com/luckyAkbar/atec-api/internal/worker"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/time/rate"
 
+	"github.com/sweet-go/stdlib/encryption"
 	"github.com/sweet-go/stdlib/mail"
 	workerPkg "github.com/sweet-go/stdlib/worker"
 )
@@ -30,6 +33,11 @@ func init() {
 }
 
 func workerFn(_ *cobra.Command, _ []string) {
+	key, err := encryption.ReadKeyFromFile("./private.pem")
+	if err != nil {
+		panic(err)
+	}
+
 	db.InitializePostgresConn()
 
 	sibClient := mail.NewSendInBlueClient(config.SendInBlueSender(), config.SendinblueAPIKey(), config.SendInBlueIsActivated())
@@ -38,6 +46,13 @@ func workerFn(_ *cobra.Command, _ []string) {
 		PrivateKey:        config.MailgunPrivateAPIKey(),
 		IsActivated:       config.MailgunIsActivated(),
 		ServerSenderEmail: config.MailgunSenderEmail(),
+	})
+
+	sharedCryptor := common.NewSharedCryptor(&common.CreateCryptorOpts{
+		HashCost:      bcrypt.DefaultCost,
+		EncryptionKey: key.Bytes,
+		IV:            config.IVKey(),
+		BlockSize:     common.DefaultBlockSize,
 	})
 
 	emailRepo := repository.NewEmailRepository(db.PostgresDB)
@@ -59,9 +74,10 @@ func workerFn(_ *cobra.Command, _ []string) {
 			Logger:   logrus.New(),
 			Location: time.UTC,
 		},
-		MailUtil: mailUtil,
-		MailRepo: emailRepo,
-		Limiter:  rate.NewLimiter(rate.Limit(config.WorkerLimiterLimit()), config.WorkerLimiterBurst()),
+		MailUtil:      mailUtil,
+		MailRepo:      emailRepo,
+		Limiter:       rate.NewLimiter(rate.Limit(config.WorkerLimiterLimit()), config.WorkerLimiterBurst()),
+		SharedCryptor: sharedCryptor,
 	})
 
 	if err != nil {

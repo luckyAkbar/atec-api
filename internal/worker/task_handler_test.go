@@ -6,6 +6,8 @@ import (
 	"errors"
 	"testing"
 
+	commonMock "github.com/luckyAkbar/atec-api/internal/common/mock"
+
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
@@ -27,6 +29,7 @@ func TestWorker_HandleSendEmail(t *testing.T) {
 
 	mockMailUtility := mailMock.NewMockUtility(ctrl)
 	mockMailRepo := mock.NewMockEmailRepository(ctrl)
+	mockSharedCryptor := commonMock.NewMockSharedCryptor(ctrl)
 
 	normalLimiter := rate.NewLimiter(10, 20)
 	id := uuid.New()
@@ -53,7 +56,7 @@ func TestWorker_HandleSendEmail(t *testing.T) {
 		Subject:     email.Subject,
 	}
 
-	taskHandler := newTaskHandler(mockMailUtility, normalLimiter, mockMailRepo)
+	taskHandler := newTaskHandler(mockMailUtility, normalLimiter, mockMailRepo, mockSharedCryptor)
 
 	tests := []common.TestStructure{
 		{
@@ -81,7 +84,7 @@ func TestWorker_HandleSendEmail(t *testing.T) {
 			MockFn: func() {},
 			Run: func() {
 				rateLimited := rate.NewLimiter(0, 0)
-				rlTaskHandler := newTaskHandler(mockMailUtility, rateLimited, mockMailRepo)
+				rlTaskHandler := newTaskHandler(mockMailUtility, rateLimited, mockMailRepo, mockSharedCryptor)
 				err := rlTaskHandler.HandleSendEmail(ctx, task)
 				assert.Error(t, err)
 			},

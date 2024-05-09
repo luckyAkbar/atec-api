@@ -7,10 +7,12 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
+	"github.com/luckyAkbar/atec-api/internal/common"
 	"github.com/luckyAkbar/atec-api/internal/config"
 	"github.com/luckyAkbar/atec-api/internal/model"
 	"github.com/luckyAkbar/atec-api/internal/repository"
 	"github.com/sirupsen/logrus"
+	"github.com/sweet-go/stdlib/helper"
 	"github.com/sweet-go/stdlib/mail"
 	workerPkg "github.com/sweet-go/stdlib/worker"
 	"golang.org/x/time/rate"
@@ -18,16 +20,18 @@ import (
 )
 
 type th struct {
-	mailUtil mail.Utility
-	limiter  *rate.Limiter
-	mailRepo model.EmailRepository
+	mailUtil      mail.Utility
+	limiter       *rate.Limiter
+	mailRepo      model.EmailRepository
+	sharedCryptor common.SharedCryptor
 }
 
-func newTaskHandler(mailUtil mail.Utility, limiter *rate.Limiter, mailRepo model.EmailRepository) *th {
+func newTaskHandler(mailUtil mail.Utility, limiter *rate.Limiter, mailRepo model.EmailRepository, sharedCryptor common.SharedCryptor) *th {
 	return &th{
-		mailUtil: mailUtil,
-		limiter:  limiter,
-		mailRepo: mailRepo,
+		mailUtil:      mailUtil,
+		limiter:       limiter,
+		mailRepo:      mailRepo,
+		sharedCryptor: sharedCryptor,
 	}
 }
 
@@ -59,6 +63,11 @@ func (th *th) HandleSendEmail(ctx context.Context, task *asynq.Task) error {
 		break
 	}
 
+	if err := email.Decrypt(th.sharedCryptor); err != nil {
+		logger.WithError(err).Error("failed to decrypt email data")
+		return err
+	}
+
 	md, sig, err := th.mailUtil.SendEmail(ctx, &mail.Mail{
 		ID:          email.ID.String(),
 		To:          email.GenericReceipientsTo(),
@@ -69,7 +78,7 @@ func (th *th) HandleSendEmail(ctx context.Context, task *asynq.Task) error {
 	})
 
 	if err != nil {
-		logger.WithError(err).Error("mailUtil.SendEmail returns error, failing to send email")
+		logger.WithField("email", helper.Dump(email)).WithError(err).Error("mailUtil.SendEmail returns error, failing to send email")
 		return err
 	}
 
