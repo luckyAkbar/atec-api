@@ -65,6 +65,20 @@ func (mr *MockAccessTokenRepositoryMockRecorder) DeleteByID(arg0, arg1 interface
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteByID", reflect.TypeOf((*MockAccessTokenRepository)(nil).DeleteByID), arg0, arg1)
 }
 
+// DeleteByIDs mocks base method.
+func (m *MockAccessTokenRepository) DeleteByIDs(arg0 context.Context, arg1 []uuid.UUID, arg2 bool) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteByIDs", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteByIDs indicates an expected call of DeleteByIDs.
+func (mr *MockAccessTokenRepositoryMockRecorder) DeleteByIDs(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteByIDs", reflect.TypeOf((*MockAccessTokenRepository)(nil).DeleteByIDs), arg0, arg1, arg2)
+}
+
 // DeleteByUserID mocks base method.
 func (m *MockAccessTokenRepository) DeleteByUserID(arg0 context.Context, arg1 uuid.UUID, arg2 *gorm.DB) error {
 	m.ctrl.T.Helper()
@@ -77,6 +91,20 @@ func (m *MockAccessTokenRepository) DeleteByUserID(arg0 context.Context, arg1 uu
 func (mr *MockAccessTokenRepositoryMockRecorder) DeleteByUserID(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteByUserID", reflect.TypeOf((*MockAccessTokenRepository)(nil).DeleteByUserID), arg0, arg1, arg2)
+}
+
+// DeleteCredentialsFromCache mocks base method.
+func (m *MockAccessTokenRepository) DeleteCredentialsFromCache(arg0 context.Context, arg1 []string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteCredentialsFromCache", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteCredentialsFromCache indicates an expected call of DeleteCredentialsFromCache.
+func (mr *MockAccessTokenRepositoryMockRecorder) DeleteCredentialsFromCache(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteCredentialsFromCache", reflect.TypeOf((*MockAccessTokenRepository)(nil).DeleteCredentialsFromCache), arg0, arg1)
 }
 
 // FindByToken mocks base method.
@@ -92,6 +120,21 @@ func (m *MockAccessTokenRepository) FindByToken(arg0 context.Context, arg1 strin
 func (mr *MockAccessTokenRepositoryMockRecorder) FindByToken(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByToken", reflect.TypeOf((*MockAccessTokenRepository)(nil).FindByToken), arg0, arg1)
+}
+
+// FindByUserID mocks base method.
+func (m *MockAccessTokenRepository) FindByUserID(arg0 context.Context, arg1 uuid.UUID, arg2 int) ([]model.AccessToken, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindByUserID", arg0, arg1, arg2)
+	ret0, _ := ret[0].([]model.AccessToken)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindByUserID indicates an expected call of FindByUserID.
+func (mr *MockAccessTokenRepositoryMockRecorder) FindByUserID(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByUserID", reflect.TypeOf((*MockAccessTokenRepository)(nil).FindByUserID), arg0, arg1, arg2)
 }
 
 // FindCredentialByToken mocks base method.
