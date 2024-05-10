@@ -81,7 +81,7 @@ func serverFn(_ *cobra.Command, _ []string) {
 	userRepo := repository.NewUserRepository(db.PostgresDB, cacher)
 	pinRepo := repository.NewPinRepository(db.PostgresDB)
 	emailRepo := repository.NewEmailRepository(db.PostgresDB)
-	accessTokenRepo := repository.NewAccessTokenRepository(db.PostgresDB)
+	accessTokenRepo := repository.NewAccessTokenRepository(db.PostgresDB, cacher)
 	sdtemplateRepo := repository.NewSDTemplateRepository(db.PostgresDB)
 	sdpackageRepo := repository.NewSDPackageRepository(db.PostgresDB)
 	sdtRepo := repository.NewSDTestResultRepository(db.PostgresDB)

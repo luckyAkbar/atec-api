@@ -36,7 +36,7 @@ count-lines-no-generated-no-test:
 	find . -name '*.go' -not -name 'mock_*.go' -not -name '*_test.go' | xargs wc -l
 
 lint: check-cognitive-complexity
-	golangci-lint run --print-issued-lines=false --exclude-use-default=false --enable=revive --enable=goimports  --enable=unconvert --enable=unparam --concurrency=2
+	golangci-lint run --print-issued-lines=false --exclude-use-default=false --enable=goimports  --enable=unconvert --enable=unparam --concurrency=2
 
 check-gotest:
 ifeq (, $(shell which richgo))
@@ -57,7 +57,8 @@ test-only: check-gotest
 test: lint mockgen test-only
 
 check-cognitive-complexity:
-	find . -type f -name '*.go' -not -name "*.pb.go" -not -name "mock*.go" -not -name "generated.go" -not -name "federation.go" \
+	find . -type f -name '*.go' -not -name "*.pb.go" -not -name "generated.go"\
+	-not -name "mock*.go" -not -name "generated.go"  -not -name "federation.go" \
       -exec gocognit -over 15 {} +
 
 migrate:

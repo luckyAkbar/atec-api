@@ -7,10 +7,15 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/luckyAkbar/atec-api/internal/common"
 	"github.com/luckyAkbar/atec-api/internal/model"
+	"github.com/luckyAkbar/atec-api/internal/model/mock"
+	"github.com/redis/go-redis/v9"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/sweet-go/stdlib/helper"
 	"gorm.io/gorm"
 )
 
@@ -18,7 +23,9 @@ func TestEAccessTokenRepository_Create(t *testing.T) {
 	kit, closer := common.InitializeRepoTestKit(t)
 	defer closer()
 
-	repo := NewAccessTokenRepository(kit.DB)
+	mockCacher := mock.NewMockCacher(kit.Ctrl)
+
+	repo := NewAccessTokenRepository(kit.DB, mockCacher)
 	mock := kit.DBmock
 	ctx := context.Background()
 	now := time.Now().UTC()
@@ -74,7 +81,9 @@ func TestEAccessTokenRepository_FindByID(t *testing.T) {
 	kit, closer := common.InitializeRepoTestKit(t)
 	defer closer()
 
-	repo := NewAccessTokenRepository(kit.DB)
+	mockCacher := mock.NewMockCacher(kit.Ctrl)
+
+	repo := NewAccessTokenRepository(kit.DB, mockCacher)
 	mock := kit.DBmock
 	ctx := context.Background()
 	now := time.Now().UTC()
@@ -139,7 +148,8 @@ func TestEAccessTokenRepository_DeleteByID(t *testing.T) {
 	kit, closer := common.InitializeRepoTestKit(t)
 	defer closer()
 
-	repo := NewAccessTokenRepository(kit.DB)
+	mockCacher := mock.NewMockCacher(kit.Ctrl)
+	repo := NewAccessTokenRepository(kit.DB, mockCacher)
 	mock := kit.DBmock
 	ctx := context.Background()
 	now := time.Now().UTC()
@@ -193,7 +203,8 @@ func TestAccessTokenRepository_DeleteByUserID(t *testing.T) {
 	kit, closer := common.InitializeRepoTestKit(t)
 	defer closer()
 
-	repo := NewAccessTokenRepository(kit.DB)
+	mockCacher := mock.NewMockCacher(kit.Ctrl)
+	repo := NewAccessTokenRepository(kit.DB, mockCacher)
 	mock := kit.DBmock
 	ctx := context.Background()
 
@@ -233,6 +244,178 @@ func TestAccessTokenRepository_DeleteByUserID(t *testing.T) {
 			Run: func() {
 				err := repo.DeleteByUserID(ctx, at.UserID, nil)
 				assert.Error(t, err)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
+
+func TestAccessTokenRepo_FindCredentialByToken(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	mockCacher := mock.NewMockCacher(kit.Ctrl)
+	repo := NewAccessTokenRepository(kit.DB, mockCacher)
+	mock := kit.DBmock
+	ctx := context.Background()
+	token := "token"
+	userEmail := "email@test.com"
+	defaultNilCacheTTLMinute := 67
+	id := helper.GenerateID()
+
+	tests := []common.TestStructure{
+		{
+			Name: "got model.NilKey from cache must result to aborting the next process",
+			MockFn: func() {
+				mockCacher.EXPECT().Get(ctx, token).Times(1).Return(model.NilKey, nil)
+			},
+			Run: func() {
+				_, _, err := repo.FindCredentialByToken(ctx, token)
+				assert.Error(t, err)
+
+				assert.Equal(t, err, ErrNotFound)
+			},
+		},
+		{
+			Name: "got unmarshall error from data in cache, fallback to db but fails to cache the data",
+			MockFn: func() {
+				mockCacher.EXPECT().Get(ctx, token).Times(1).Return("in<valid>UnmarshalError</iis?", nil)
+				mock.ExpectQuery(`^SELECT .+ FROM "access_tokens"`).
+					WithArgs(token).
+					WillReturnRows(sqlmock.NewRows([]string{"id", "token", "email"}).AddRow(id, token, userEmail))
+				mockCacher.EXPECT().Set(ctx, token, gomock.Any(), gomock.Any()).Times(1).Return(errors.New("redis error")) // <- should not store nil on cache
+			},
+			Run: func() {
+				userToken, user, err := repo.FindCredentialByToken(ctx, token)
+				assert.NoError(t, err)
+
+				assert.Equal(t, userToken.Token, token)
+				assert.Equal(t, user.Email, userEmail)
+			},
+		},
+		{
+			Name: "got unmarshall error from data in cache when trying to fetch cache, fallback to db and all good",
+			MockFn: func() {
+				mockCacher.EXPECT().Get(ctx, token).Times(1).Return("in<valid>UnmarshalError</iis?", nil)
+				mock.ExpectQuery(`^SELECT .+ FROM "access_tokens"`).
+					WithArgs(token).
+					WillReturnRows(sqlmock.NewRows([]string{"id", "token", "email"}).AddRow(id, token, userEmail))
+				mockCacher.EXPECT().Set(ctx, token, gomock.Any(), gomock.Any()).Times(1).Return(nil) // <- should not store nil on cache
+			},
+			Run: func() {
+				userToken, user, err := repo.FindCredentialByToken(ctx, token)
+				assert.NoError(t, err)
+
+				assert.Equal(t, userToken.Token, token)
+				assert.Equal(t, user.Email, userEmail)
+			},
+		},
+		{
+			Name: "failure on redis when trying to fetch cache, fallback to db and all good",
+			MockFn: func() {
+				mockCacher.EXPECT().Get(ctx, token).Times(1).Return("", errors.New("err redis"))
+				mock.ExpectQuery(`^SELECT .+ FROM "access_tokens"`).
+					WithArgs(token).
+					WillReturnRows(sqlmock.NewRows([]string{"id", "token", "email"}).AddRow(id, token, userEmail))
+				mockCacher.EXPECT().Set(ctx, token, gomock.Any(), gomock.Any()).Times(1).Return(nil) // <- should not store nil on cache
+			},
+			Run: func() {
+				userToken, user, err := repo.FindCredentialByToken(ctx, token)
+				assert.NoError(t, err)
+
+				assert.Equal(t, userToken.Token, token)
+				assert.Equal(t, user.Email, userEmail)
+			},
+		},
+		{
+			Name: "failure on redis when trying to fetch cache, fallback to db but fails to cache the data",
+			MockFn: func() {
+				mockCacher.EXPECT().Get(ctx, token).Times(1).Return("", errors.New("err redis"))
+				mock.ExpectQuery(`^SELECT .+ FROM "access_tokens"`).
+					WithArgs(token).
+					WillReturnRows(sqlmock.NewRows([]string{"id", "token", "email"}).AddRow(id, token, userEmail))
+				mockCacher.EXPECT().Set(ctx, token, gomock.Any(), gomock.Any()).Times(1).Return(errors.New("redis error")) // <- should not store nil on cache
+			},
+			Run: func() {
+				userToken, user, err := repo.FindCredentialByToken(ctx, token)
+				assert.NoError(t, err)
+
+				assert.Equal(t, userToken.Token, token)
+				assert.Equal(t, user.Email, userEmail)
+			},
+		},
+		{
+			Name: "failure on redis when trying to fetch cache, fallback to db and got not found then all good",
+			MockFn: func() {
+				viper.Set("server.auth.access_token_duration_minutes", defaultNilCacheTTLMinute)
+				mockCacher.EXPECT().Get(ctx, token).Times(1).Return("", errors.New("err redis"))
+				mock.ExpectQuery(`^SELECT .+ FROM "access_tokens"`).
+					WithArgs(token).
+					WillReturnRows(sqlmock.NewRows([]string{"id", "token", "email"}))
+				mockCacher.EXPECT().Set(ctx, token, model.NilKey, time.Minute*time.Duration(defaultNilCacheTTLMinute)).Times(1).Return(nil) // <- should store nil on cache
+			},
+			Run: func() {
+				_, _, err := repo.FindCredentialByToken(ctx, token)
+				assert.Error(t, err)
+
+				assert.Equal(t, err, ErrNotFound)
+			},
+		},
+		{
+			Name: "failure on redis when trying to fetch cache, fallback to db and got not found then fails to write cache",
+			MockFn: func() {
+				viper.Set("server.auth.access_token_duration_minutes", defaultNilCacheTTLMinute)
+				mockCacher.EXPECT().Get(ctx, token).Times(1).Return("", errors.New("err redis"))
+				mock.ExpectQuery(`^SELECT .+ FROM "access_tokens"`).
+					WithArgs(token).
+					WillReturnRows(sqlmock.NewRows([]string{"id", "token", "email"}))
+				mockCacher.EXPECT().Set(ctx, token, model.NilKey, time.Minute*time.Duration(defaultNilCacheTTLMinute)).Times(1).Return(errors.New("err redis")) // <- should store nil on cache
+			},
+			Run: func() {
+				_, _, err := repo.FindCredentialByToken(ctx, token)
+				assert.Error(t, err)
+
+				assert.Equal(t, err, ErrNotFound)
+			},
+		},
+		{
+			Name: "not found on redis when trying to fetch cache, fallback to db and all good",
+			MockFn: func() {
+				mockCacher.EXPECT().Get(ctx, token).Times(1).Return("", redis.Nil)
+				mock.ExpectQuery(`^SELECT .+ FROM "access_tokens"`).
+					WithArgs(token).
+					WillReturnRows(sqlmock.NewRows([]string{"id", "token", "email"}).AddRow(id, token, userEmail))
+				mockCacher.EXPECT().Set(ctx, token, gomock.Any(), gomock.Any()).Times(1).Return(nil) // <- should not store nil on cache
+			},
+			Run: func() {
+				userToken, user, err := repo.FindCredentialByToken(ctx, token)
+				assert.NoError(t, err)
+
+				assert.Equal(t, userToken.Token, token)
+				assert.Equal(t, user.Email, userEmail)
+			},
+		},
+		{
+			Name: "not found on redis when trying to fetch cache, fallback to db but fails to cache the data",
+			MockFn: func() {
+				mockCacher.EXPECT().Get(ctx, token).Times(1).Return("", redis.Nil)
+				mock.ExpectQuery(`^SELECT .+ FROM "access_tokens"`).
+					WithArgs(token).
+					WillReturnRows(sqlmock.NewRows([]string{"id", "token", "email"}).AddRow(id, token, userEmail))
+				mockCacher.EXPECT().Set(ctx, token, gomock.Any(), gomock.Any()).Times(1).Return(errors.New("redis error")) // <- should not store nil on cache
+			},
+			Run: func() {
+				userToken, user, err := repo.FindCredentialByToken(ctx, token)
+				assert.NoError(t, err)
+
+				assert.Equal(t, userToken.Token, token)
+				assert.Equal(t, user.Email, userEmail)
 			},
 		},
 	}
