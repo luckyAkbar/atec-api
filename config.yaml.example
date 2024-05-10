@@ -10,6 +10,7 @@ server:
   auth:
     access_token_duration_minutes: 60
     iv: ""
+    active_token_limit: 0
   user:
     change_password_base_url: ""
     change_password_expiry_duration_minutes: 15
