@@ -11,6 +11,7 @@ import (
 	"github.com/luckyAkbar/atec-api/internal/db"
 	"github.com/luckyAkbar/atec-api/internal/repository"
 	"github.com/luckyAkbar/atec-api/internal/worker"
+	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"golang.org/x/time/rate"
@@ -30,7 +31,17 @@ func init() {
 }
 
 func workerFn(_ *cobra.Command, _ []string) {
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:         config.RedisAddr(),
+		Password:     config.RedisPassword(),
+		DB:           config.RedisCacheDB(),
+		MinIdleConns: config.RedisMinIdleConn(),
+		MaxIdleConns: config.RedisMaxIdleConn(),
+	})
+
 	db.InitializePostgresConn()
+
+	cacher := db.NewCacher(redisClient)
 
 	sibClient := mail.NewSendInBlueClient(config.SendInBlueSender(), config.SendinblueAPIKey(), config.SendInBlueIsActivated())
 	mailgunClient := mail.NewMailgunClient(mail.MailgunConfig{
@@ -42,6 +53,8 @@ func workerFn(_ *cobra.Command, _ []string) {
 
 	emailRepo := repository.NewEmailRepository(db.PostgresDB)
 	mailUtil := mail.NewUtility(sibClient, mailgunClient)
+	userRepo := repository.NewUserRepository(db.PostgresDB, cacher)
+	accessTokenRepo := repository.NewAccessTokenRepository(db.PostgresDB, cacher)
 
 	server, err := worker.NewServer(config.WorkerBrokerHost(), worker.ServerConfig{
 		AsynqConfig: asynq.Config{
@@ -59,9 +72,11 @@ func workerFn(_ *cobra.Command, _ []string) {
 			Logger:   logrus.New(),
 			Location: time.UTC,
 		},
-		MailUtil: mailUtil,
-		MailRepo: emailRepo,
-		Limiter:  rate.NewLimiter(rate.Limit(config.WorkerLimiterLimit()), config.WorkerLimiterBurst()),
+		MailUtil:        mailUtil,
+		MailRepo:        emailRepo,
+		UserRepo:        userRepo,
+		AccessTokenRepo: accessTokenRepo,
+		Limiter:         rate.NewLimiter(rate.Limit(config.WorkerLimiterLimit()), config.WorkerLimiterBurst()),
 	})
 
 	if err != nil {

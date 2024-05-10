@@ -95,7 +95,7 @@ func serverFn(_ *cobra.Command, _ []string) {
 
 	emailUsecase := usecase.NewEmailUsecase(emailRepo, workerClient)
 	userUsecase := usecase.NewUserUsecase(userRepo, pinRepo, sharedCryptor, emailUsecase, accessTokenRepo, db.PostgresDB)
-	authUsecase := usecase.NewAuthUsecase(accessTokenRepo, userRepo, sharedCryptor)
+	authUsecase := usecase.NewAuthUsecase(accessTokenRepo, userRepo, sharedCryptor, workerClient)
 	sdtemplateUsecase := usecase.NewSDTemplateUsecase(sdtemplateRepo)
 	sdpackageUsecase := usecase.NewSDPackageUsecase(sdpackageRepo, sdtemplateRepo)
 	sdtUsecase := usecase.NewSDTestResultUsecase(sdtRepo, sdpackageRepo, sharedCryptor, db.PostgresDB, f)
