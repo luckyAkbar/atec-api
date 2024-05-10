@@ -51,3 +51,12 @@ func (c *cacher) Set(ctx context.Context, key string, val string, exp time.Durat
 
 	return nil
 }
+
+func (c *cacher) Del(ctx context.Context, key []string) error {
+	err := c.client.Del(ctx, key...).Err()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
