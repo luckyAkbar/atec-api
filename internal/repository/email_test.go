@@ -39,7 +39,7 @@ func TestEmailRepository_Create(t *testing.T) {
 			MockFn: func() {
 				mock.ExpectBegin()
 				mock.ExpectExec(`^INSERT INTO "emails"`).
-					WithArgs(email.ID, email.Subject, email.Body, email.To, email.Cc, email.Bcc, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), email.CreatedAt, email.UpdatedAt, sqlmock.AnyArg()).
+					WithArgs(email.ID, email.Subject, email.Body, email.To, email.Cc, email.Bcc, sqlmock.AnyArg(), email.Deadline, sqlmock.AnyArg(), sqlmock.AnyArg(), email.CreatedAt, email.UpdatedAt, sqlmock.AnyArg()).
 					WillReturnResult(sqlmock.NewResult(1, 1))
 				mock.ExpectCommit()
 			},
@@ -53,7 +53,7 @@ func TestEmailRepository_Create(t *testing.T) {
 			MockFn: func() {
 				mock.ExpectBegin()
 				mock.ExpectExec(`^INSERT INTO "emails"`).
-					WithArgs(email.ID, email.Subject, email.Body, email.To, email.Cc, email.Bcc, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), email.CreatedAt, email.UpdatedAt, sqlmock.AnyArg()).
+					WithArgs(email.ID, email.Subject, email.Body, email.To, email.Cc, email.Bcc, sqlmock.AnyArg(), email.Deadline, sqlmock.AnyArg(), sqlmock.AnyArg(), email.CreatedAt, email.UpdatedAt, sqlmock.AnyArg()).
 					WillReturnError(errors.New("db error"))
 				mock.ExpectRollback()
 			},
@@ -158,7 +158,7 @@ func TestEmailRepository_Update(t *testing.T) {
 			MockFn: func() {
 				mock.ExpectBegin()
 				mock.ExpectExec(`^UPDATE "emails" SET`).
-					WithArgs(e.Subject, e.Body, e.To, e.Cc, e.Bcc, e.SentAt, e.ClientSignature, e.Metadata, e.CreatedAt, sqlmock.AnyArg(), e.DeletedAt, e.ID).
+					WithArgs(e.Subject, e.Body, e.To, e.Cc, e.Bcc, e.SentAt, e.Deadline, e.ClientSignature, e.Metadata, e.CreatedAt, sqlmock.AnyArg(), e.DeletedAt, e.ID).
 					WillReturnResult(sqlmock.NewResult(1, 1))
 				mock.ExpectCommit()
 			},
@@ -172,7 +172,7 @@ func TestEmailRepository_Update(t *testing.T) {
 			MockFn: func() {
 				mock.ExpectBegin()
 				mock.ExpectExec(`^UPDATE "emails" SET`).
-					WithArgs(e.Subject, e.Body, e.To, e.Cc, e.Bcc, e.SentAt, e.ClientSignature, e.Metadata, e.CreatedAt, sqlmock.AnyArg(), e.DeletedAt, e.ID).
+					WithArgs(e.Subject, e.Body, e.To, e.Cc, e.Bcc, e.SentAt, e.Deadline, e.ClientSignature, e.Metadata, e.CreatedAt, sqlmock.AnyArg(), e.DeletedAt, e.ID).
 					WillReturnError(errors.New("db error"))
 				mock.ExpectRollback()
 			},

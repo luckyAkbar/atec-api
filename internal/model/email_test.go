@@ -2,8 +2,10 @@ package model
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/guregu/null.v4"
 )
 
 func TestEmailModel_RegisterEmailInput_Validate(t *testing.T) {
@@ -146,5 +148,62 @@ func TestEmailModel_RegisterEmailInput_Validate(t *testing.T) {
 
 		err := in.Validate()
 		assert.NoError(t, err)
+	})
+}
+
+func TestEmailModel_IsAlreadyPastDeadline(t *testing.T) {
+	t.Run("deadline is unset, must return false", func(t *testing.T) {
+		e := &Email{}
+		assert.Equal(t, false, e.IsAlreadyPastDeadline())
+	})
+
+	t.Run("deadline has passed by 1 sec", func(t *testing.T) {
+		deadlineSecond := 10
+		e := &Email{
+			Deadline:  null.NewInt(int64(deadlineSecond), true),
+			CreatedAt: time.Now().Add(-11 * time.Second),
+		}
+
+		assert.Equal(t, true, e.IsAlreadyPastDeadline())
+	})
+
+	t.Run("deadline has passed the exact deadline time", func(t *testing.T) {
+		deadlineSecond := 10
+		e := &Email{
+			Deadline:  null.NewInt(int64(deadlineSecond), true),
+			CreatedAt: time.Now().Add(-10 * time.Second),
+		}
+
+		assert.Equal(t, true, e.IsAlreadyPastDeadline())
+	})
+
+	t.Run("deadline has not passed", func(t *testing.T) {
+		deadlineSecond := 10
+		e := &Email{
+			Deadline:  null.NewInt(int64(deadlineSecond), true),
+			CreatedAt: time.Now().Add(-9 * time.Second),
+		}
+
+		assert.Equal(t, false, e.IsAlreadyPastDeadline())
+	})
+
+	t.Run("deadline has not passed by large time difference", func(t *testing.T) {
+		deadlineSecond := 100000
+		e := &Email{
+			Deadline:  null.NewInt(int64(deadlineSecond), true),
+			CreatedAt: time.Now().Add(-90000 * time.Second),
+		}
+
+		assert.Equal(t, false, e.IsAlreadyPastDeadline())
+	})
+
+	t.Run("deadline has passed by large time difference", func(t *testing.T) {
+		deadlineSecond := 1
+		e := &Email{
+			Deadline:  null.NewInt(int64(deadlineSecond), true),
+			CreatedAt: time.Now().Add(-90000 * time.Second),
+		}
+
+		assert.Equal(t, true, e.IsAlreadyPastDeadline())
 	})
 }

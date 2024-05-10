@@ -198,3 +198,14 @@ func RedisMinIdleConn() int {
 func RedisMaxIdleConn() int {
 	return viper.GetInt("redis.max")
 }
+
+// ChangePasswordExpiryDurationMinutes will return change password expiry duration in minutes
+// if left unset, will default to 15
+func ChangePasswordExpiryDurationMinutes() int {
+	cfg := viper.GetInt("server.user.change_password_expiry_duration_minutes")
+	if cfg == 0 {
+		return 15
+	}
+
+	return cfg
+}
