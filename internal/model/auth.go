@@ -132,8 +132,11 @@ type AccessTokenRepository interface {
 	Create(ctx context.Context, at *AccessToken) error
 	FindByToken(ctx context.Context, token string) (*AccessToken, error)
 	DeleteByID(ctx context.Context, id uuid.UUID) error
+	DeleteByIDs(ctx context.Context, ids []uuid.UUID, hardDelete bool) error
 	FindCredentialByToken(ctx context.Context, token string) (*AccessToken, *User, error)
 	DeleteByUserID(ctx context.Context, id uuid.UUID, tx *gorm.DB) error
+	FindByUserID(ctx context.Context, userID uuid.UUID, limit int) ([]AccessToken, error)
+	DeleteCredentialsFromCache(ctx context.Context, tokens []string) error
 }
 
 // AuthUsecase auth usecase

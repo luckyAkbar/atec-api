@@ -12,15 +12,18 @@ var mux = asynq.NewServeMux()
 
 func registerTaskHandler(taskHandler *th) {
 	mux.HandleFunc(string(model.TaskSendEmail), taskHandler.HandleSendEmail)
+	mux.HandleFunc(string(model.TaskEnforceActiveTokenLimitter), taskHandler.HandleEnforceActiveTokenLimitter)
 }
 
 // ServerConfig configuration options for worker server
 type ServerConfig struct {
-	AsynqConfig   asynq.Config
-	SchedulerOpts *asynq.SchedulerOpts
-	MailUtil      mail.Utility
-	Limiter       *rate.Limiter
-	MailRepo      model.EmailRepository
+	AsynqConfig     asynq.Config
+	SchedulerOpts   *asynq.SchedulerOpts
+	MailUtil        mail.Utility
+	Limiter         *rate.Limiter
+	MailRepo        model.EmailRepository
+	UserRepo        model.UserRepository
+	AccessTokenRepo model.AccessTokenRepository
 }
 
 // NewServer return worker server
@@ -31,7 +34,7 @@ func NewServer(redisHost string, cfg ServerConfig) (workerPkg.Server, error) {
 		cfg.SchedulerOpts,
 	)
 
-	th := newTaskHandler(cfg.MailUtil, cfg.Limiter, cfg.MailRepo)
+	th := newTaskHandler(cfg.MailUtil, cfg.Limiter, cfg.MailRepo, cfg.UserRepo, cfg.AccessTokenRepo)
 
 	registerTaskHandler(th)
 
