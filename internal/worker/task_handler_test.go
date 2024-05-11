@@ -15,6 +15,7 @@ import (
 	"github.com/luckyAkbar/atec-api/internal/model"
 	"github.com/luckyAkbar/atec-api/internal/model/mock"
 	"github.com/luckyAkbar/atec-api/internal/repository"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/sweet-go/stdlib/mail"
 	mailMock "github.com/sweet-go/stdlib/mail/mock"
@@ -29,6 +30,8 @@ func TestWorker_HandleSendEmail(t *testing.T) {
 
 	mockMailUtility := mailMock.NewMockUtility(ctrl)
 	mockMailRepo := mock.NewMockEmailRepository(ctrl)
+	mockUserRepo := mock.NewMockUserRepository(ctrl)
+	mockAccessTokenRepo := mock.NewMockAccessTokenRepository(ctrl)
 
 	normalLimiter := rate.NewLimiter(10, 20)
 	id := uuid.New()
@@ -77,7 +80,7 @@ func TestWorker_HandleSendEmail(t *testing.T) {
 		Subject:     email.Subject,
 	}
 
-	taskHandler := newTaskHandler(mockMailUtility, normalLimiter, mockMailRepo)
+	taskHandler := newTaskHandler(mockMailUtility, normalLimiter, mockMailRepo, mockUserRepo, mockAccessTokenRepo)
 
 	tests := []common.TestStructure{
 		{
@@ -105,7 +108,7 @@ func TestWorker_HandleSendEmail(t *testing.T) {
 			MockFn: func() {},
 			Run: func() {
 				rateLimited := rate.NewLimiter(0, 0)
-				rlTaskHandler := newTaskHandler(mockMailUtility, rateLimited, mockMailRepo)
+				rlTaskHandler := newTaskHandler(mockMailUtility, rateLimited, mockMailRepo, mockUserRepo, mockAccessTokenRepo)
 				err := rlTaskHandler.HandleSendEmail(ctx, task)
 				assert.Error(t, err)
 			},
@@ -176,6 +179,173 @@ func TestWorker_HandleSendEmail(t *testing.T) {
 			},
 			Run: func() {
 				err := taskHandler.HandleSendEmail(ctx, task)
+				assert.NoError(t, err)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt.MockFn()
+		tt.Run()
+	}
+}
+
+func TestTaskHandler_HandleEnforceActiveTokenLimiter(t *testing.T) {
+	ctx := context.Background()
+	ctrl := gomock.NewController(t)
+
+	mockMailUtility := mailMock.NewMockUtility(ctrl)
+	mockMailRepo := mock.NewMockEmailRepository(ctrl)
+	mockUserRepo := mock.NewMockUserRepository(ctrl)
+	mockAccessTokenRepo := mock.NewMockAccessTokenRepository(ctrl)
+
+	normalLimiter := rate.NewLimiter(10, 20)
+	id := uuid.New()
+
+	payload, err := json.Marshal(id)
+	assert.NoError(t, err)
+
+	task := asynq.NewTask(string(model.TaskEnforceActiveTokenLimiter), payload)
+
+	th := newTaskHandler(mockMailUtility, normalLimiter, mockMailRepo, mockUserRepo, mockAccessTokenRepo)
+
+	activeTokenLimit := 5
+	viper.Set("server.auth.active_token_limit", activeTokenLimit)
+
+	belowLimitAccessToken := []model.AccessToken{}
+	for i := 0; i < activeTokenLimit; i++ {
+		belowLimitAccessToken = append(belowLimitAccessToken, model.AccessToken{
+			ID:        uuid.New(),
+			Token:     uuid.New().String(),
+			CreatedAt: time.Now().Add(time.Hour * -14),
+		})
+	}
+
+	tobeDeletedAccessToken := model.AccessToken{
+		ID:        uuid.New(),
+		Token:     uuid.New().String(),
+		CreatedAt: time.Now().Add(time.Hour * -99),
+	}
+
+	aboveLimitAccessToken := belowLimitAccessToken
+	aboveLimitAccessToken = append(aboveLimitAccessToken, tobeDeletedAccessToken)
+
+	user := &model.User{
+		ID: id,
+	}
+
+	tests := []common.TestStructure{
+		{
+			Name:   "invalid payload -> failed to unmarshal",
+			MockFn: func() {},
+			Run: func() {
+				_task := asynq.NewTask(string(model.TaskEnforceActiveTokenLimiter), []byte("][=-098765321234567890]["))
+				err := th.HandleEnforceActiveTokenLimiter(ctx, _task)
+
+				assert.Error(t, err)
+				assert.Equal(t, err.Error(), "invalid character ']' looking for beginning of value")
+			},
+		},
+		{
+			Name:   "got rate limited error",
+			MockFn: func() {},
+			Run: func() {
+				rateLimited := rate.NewLimiter(0, 0)
+				rlTaskHandler := newTaskHandler(mockMailUtility, rateLimited, mockMailRepo, mockUserRepo, mockAccessTokenRepo)
+				err := rlTaskHandler.HandleEnforceActiveTokenLimiter(ctx, task)
+				assert.Error(t, err)
+
+				assert.Equal(t, err, newWorkerRateLimitError())
+			},
+		},
+		{
+			Name: "failed to find user data",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindByID(ctx, id).Times(1).Return(nil, errors.New("err db"))
+			},
+			Run: func() {
+				err := th.HandleEnforceActiveTokenLimiter(ctx, task)
+				assert.Error(t, err)
+			},
+		},
+		{
+			Name: "got error not found from db -> continue without retrying",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindByID(ctx, id).Times(1).Return(nil, repository.ErrNotFound)
+			},
+			Run: func() {
+				err := th.HandleEnforceActiveTokenLimiter(ctx, task)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name: "failed to find access tokens",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindByID(ctx, id).Times(1).Return(user, nil)
+				mockAccessTokenRepo.EXPECT().FindByUserID(ctx, user.ID, activeTokenLimit*2).Times(1).Return(nil, errors.New("err db"))
+			},
+			Run: func() {
+				err := th.HandleEnforceActiveTokenLimiter(ctx, task)
+				assert.Error(t, err)
+			},
+		},
+		{
+			Name: "no access token found, will continue without retrying",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindByID(ctx, id).Times(1).Return(user, nil)
+				mockAccessTokenRepo.EXPECT().FindByUserID(ctx, user.ID, activeTokenLimit*2).Times(1).Return(nil, repository.ErrNotFound)
+			},
+			Run: func() {
+				err := th.HandleEnforceActiveTokenLimiter(ctx, task)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name: "active access token count still below upper limit",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindByID(ctx, id).Times(1).Return(user, nil)
+				mockAccessTokenRepo.EXPECT().FindByUserID(ctx, user.ID, activeTokenLimit*2).Times(1).Return(belowLimitAccessToken, nil)
+			},
+			Run: func() {
+				err := th.HandleEnforceActiveTokenLimiter(ctx, task)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name: "access token are passing maximum limit, but fails when deleting cached creds",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindByID(ctx, id).Times(1).Return(user, nil)
+				mockAccessTokenRepo.EXPECT().FindByUserID(ctx, user.ID, activeTokenLimit*2).Times(1).Return(aboveLimitAccessToken, nil)
+				mockAccessTokenRepo.EXPECT().DeleteCredentialsFromCache(ctx, []string{tobeDeletedAccessToken.Token}).Times(1).Return(errors.New("err redis"))
+			},
+			Run: func() {
+				err := th.HandleEnforceActiveTokenLimiter(ctx, task)
+				assert.Error(t, err)
+			},
+		},
+		{
+			Name: "access token are passing maximum limit, but fails when deleting db record",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindByID(ctx, id).Times(1).Return(user, nil)
+				mockAccessTokenRepo.EXPECT().FindByUserID(ctx, user.ID, activeTokenLimit*2).Times(1).Return(aboveLimitAccessToken, nil)
+				mockAccessTokenRepo.EXPECT().DeleteCredentialsFromCache(ctx, []string{tobeDeletedAccessToken.Token}).Times(1).Return(nil)
+				mockAccessTokenRepo.EXPECT().DeleteByIDs(ctx, []uuid.UUID{tobeDeletedAccessToken.ID}, true).Times(1).Return(errors.New("err db"))
+			},
+			Run: func() {
+				err := th.HandleEnforceActiveTokenLimiter(ctx, task)
+				assert.Error(t, err)
+			},
+		},
+		{
+			Name: "access token are passing maximum limit, all process success",
+			MockFn: func() {
+				mockUserRepo.EXPECT().FindByID(ctx, id).Times(1).Return(user, nil)
+				mockAccessTokenRepo.EXPECT().FindByUserID(ctx, user.ID, activeTokenLimit*2).Times(1).Return(aboveLimitAccessToken, nil)
+				mockAccessTokenRepo.EXPECT().DeleteCredentialsFromCache(ctx, []string{tobeDeletedAccessToken.Token}).Times(1).Return(nil)
+				mockAccessTokenRepo.EXPECT().DeleteByIDs(ctx, []uuid.UUID{tobeDeletedAccessToken.ID}, true).Times(1).Return(nil)
+			},
+			Run: func() {
+				err := th.HandleEnforceActiveTokenLimiter(ctx, task)
 				assert.NoError(t, err)
 			},
 		},

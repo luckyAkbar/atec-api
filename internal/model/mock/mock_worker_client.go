@@ -36,6 +36,21 @@ func (m *MockWorkerClient) EXPECT() *MockWorkerClientMockRecorder {
 	return m.recorder
 }
 
+// EnqueueEnforceActiveTokenLimiterTask mocks base method.
+func (m *MockWorkerClient) EnqueueEnforceActiveTokenLimiterTask(arg0 context.Context, arg1 uuid.UUID) (*asynq.TaskInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EnqueueEnforceActiveTokenLimiterTask", arg0, arg1)
+	ret0, _ := ret[0].(*asynq.TaskInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EnqueueEnforceActiveTokenLimiterTask indicates an expected call of EnqueueEnforceActiveTokenLimiterTask.
+func (mr *MockWorkerClientMockRecorder) EnqueueEnforceActiveTokenLimiterTask(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnqueueEnforceActiveTokenLimiterTask", reflect.TypeOf((*MockWorkerClient)(nil).EnqueueEnforceActiveTokenLimiterTask), arg0, arg1)
+}
+
 // EnqueueSendEmailTask mocks base method.
 func (m *MockWorkerClient) EnqueueSendEmailTask(arg0 context.Context, arg1 uuid.UUID) (*asynq.TaskInfo, error) {
 	m.ctrl.T.Helper()

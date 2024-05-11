@@ -194,6 +194,16 @@ func RedisMinIdleConn() int {
 	return viper.GetInt("redis.min")
 }
 
+// ActiveTokenLimit will return active token limit. if unset or set with negative value, will return 0
+func ActiveTokenLimit() int {
+	cfg := viper.GetInt("server.auth.active_token_limit")
+	if cfg <= 0 {
+		return 0
+	}
+
+	return cfg
+}
+
 // RedisMaxIdleConn max idle
 func RedisMaxIdleConn() int {
 	return viper.GetInt("redis.max")

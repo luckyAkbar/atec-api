@@ -10,11 +10,13 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
+	"github.com/hibiken/asynq"
 	"github.com/luckyAkbar/atec-api/internal/common"
 	commonMock "github.com/luckyAkbar/atec-api/internal/common/mock"
 	"github.com/luckyAkbar/atec-api/internal/model"
 	"github.com/luckyAkbar/atec-api/internal/model/mock"
 	"github.com/luckyAkbar/atec-api/internal/repository"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 )
@@ -25,8 +27,9 @@ func TestAuthUsecase_LogIn(t *testing.T) {
 	mockAccessTokenRepo := mock.NewMockAccessTokenRepository(ctrl)
 	mockUserRepo := mock.NewMockUserRepository(ctrl)
 	mockSharedCryptor := commonMock.NewMockSharedCryptor(ctrl)
+	mockWorkerClient := mock.NewMockWorkerClient(ctrl)
 
-	uc := NewAuthUsecase(mockAccessTokenRepo, mockUserRepo, mockSharedCryptor)
+	uc := NewAuthUsecase(mockAccessTokenRepo, mockUserRepo, mockSharedCryptor, mockWorkerClient)
 
 	input := &model.LogInInput{
 		Email:    "valid.email@format.com",
@@ -209,8 +212,46 @@ func TestAuthUsecase_LogIn(t *testing.T) {
 				mockSharedCryptor.EXPECT().CompareHash(pwDecoded, []byte(input.Password)).Times(1).Return(nil)
 				mockSharedCryptor.EXPECT().CreateSecureToken().Times(1).Return("plain", "crypted", nil)
 				mockAccessTokenRepo.EXPECT().Create(ctx, gomock.Any()).Times(1).Return(nil)
+				mockWorkerClient.EXPECT().EnqueueEnforceActiveTokenLimiterTask(ctx, user.ID).Times(1).Return(&asynq.TaskInfo{}, nil)
 			},
 			Run: func() {
+				viper.Set("server.auth.active_token_limit", 10)
+				resp, cerr := uc.LogIn(ctx, input)
+
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, resp.UserID, user.ID)
+			},
+		},
+		{
+			Name: "failed to enqueue enforce active token limiter, but thats ok",
+			MockFn: func() {
+				mockSharedCryptor.EXPECT().Encrypt(input.Email).Times(1).Return(encEmail, nil)
+				mockUserRepo.EXPECT().FindByEmail(ctx, encEmail).Times(1).Return(user, nil)
+				mockSharedCryptor.EXPECT().CompareHash(pwDecoded, []byte(input.Password)).Times(1).Return(nil)
+				mockSharedCryptor.EXPECT().CreateSecureToken().Times(1).Return("plain", "crypted", nil)
+				mockAccessTokenRepo.EXPECT().Create(ctx, gomock.Any()).Times(1).Return(nil)
+				mockWorkerClient.EXPECT().EnqueueEnforceActiveTokenLimiterTask(ctx, user.ID).Times(1).Return(nil, errors.New("err worker"))
+			},
+			Run: func() {
+				viper.Set("server.auth.active_token_limit", 10)
+				resp, cerr := uc.LogIn(ctx, input)
+
+				assert.NoError(t, cerr.Type)
+				assert.Equal(t, resp.UserID, user.ID)
+			},
+		},
+		{
+			Name: "ok-active token limiter is disabled",
+			MockFn: func() {
+				mockSharedCryptor.EXPECT().Encrypt(input.Email).Times(1).Return(encEmail, nil)
+				mockUserRepo.EXPECT().FindByEmail(ctx, encEmail).Times(1).Return(user, nil)
+				mockSharedCryptor.EXPECT().CompareHash(pwDecoded, []byte(input.Password)).Times(1).Return(nil)
+				mockSharedCryptor.EXPECT().CreateSecureToken().Times(1).Return("plain", "crypted", nil)
+				mockAccessTokenRepo.EXPECT().Create(ctx, gomock.Any()).Times(1).Return(nil)
+				//mockWorkerClient.EXPECT().EnqueueEnforceActiveTokenLimiterTask(ctx, user.ID).Times(1).Return(&asynq.TaskInfo{}, nil)
+			},
+			Run: func() {
+				viper.Set("server.auth.active_token_limit", 0)
 				resp, cerr := uc.LogIn(ctx, input)
 
 				assert.NoError(t, cerr.Type)
@@ -233,8 +274,9 @@ func TestAuthUsecase_LogOut(t *testing.T) {
 	mockAccessTokenRepo := mock.NewMockAccessTokenRepository(ctrl)
 	mockUserRepo := mock.NewMockUserRepository(ctrl)
 	mockSharedCryptor := commonMock.NewMockSharedCryptor(ctrl)
+	mockWorkerClient := mock.NewMockWorkerClient(ctrl)
 
-	uc := NewAuthUsecase(mockAccessTokenRepo, mockUserRepo, mockSharedCryptor)
+	uc := NewAuthUsecase(mockAccessTokenRepo, mockUserRepo, mockSharedCryptor, mockWorkerClient)
 	tokenEnc := "encrypted token"
 	token := &model.AccessToken{
 		ID:    uuid.New(),
@@ -314,8 +356,9 @@ func TestAuthUsecase_ValidateAccess(t *testing.T) {
 	mockAccessTokenRepo := mock.NewMockAccessTokenRepository(ctrl)
 	mockUserRepo := mock.NewMockUserRepository(ctrl)
 	mockSharedCryptor := commonMock.NewMockSharedCryptor(ctrl)
+	mockWorkerClient := mock.NewMockWorkerClient(ctrl)
 
-	uc := NewAuthUsecase(mockAccessTokenRepo, mockUserRepo, mockSharedCryptor)
+	uc := NewAuthUsecase(mockAccessTokenRepo, mockUserRepo, mockSharedCryptor, mockWorkerClient)
 	token := "token"
 	revToken := "rev token"
 	user := &model.User{
@@ -413,8 +456,9 @@ func TestAuthUsecase_ValidateResetPasswordSession(t *testing.T) {
 	mockAccessTokenRepo := mock.NewMockAccessTokenRepository(ctrl)
 	mockUserRepo := mock.NewMockUserRepository(ctrl)
 	mockSharedCryptor := commonMock.NewMockSharedCryptor(ctrl)
+	mockWorkerClient := mock.NewMockWorkerClient(ctrl)
 
-	uc := NewAuthUsecase(mockAccessTokenRepo, mockUserRepo, mockSharedCryptor)
+	uc := NewAuthUsecase(mockAccessTokenRepo, mockUserRepo, mockSharedCryptor, mockWorkerClient)
 	key := "key"
 	session := &model.ChangePasswordSession{
 		UserID:    uuid.New(),
@@ -498,8 +542,9 @@ func TestAuthUsecase_ResetPassword(t *testing.T) {
 	mockAccessTokenRepo := mock.NewMockAccessTokenRepository(ctrl)
 	mockUserRepo := mock.NewMockUserRepository(ctrl)
 	mockSharedCryptor := commonMock.NewMockSharedCryptor(ctrl)
+	mockWorkerClient := mock.NewMockWorkerClient(ctrl)
 
-	uc := NewAuthUsecase(mockAccessTokenRepo, mockUserRepo, mockSharedCryptor)
+	uc := NewAuthUsecase(mockAccessTokenRepo, mockUserRepo, mockSharedCryptor, mockWorkerClient)
 	input := &model.ResetPasswordInput{
 		Key:                 "valid key oke",
 		Password:            "validpassword",

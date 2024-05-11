@@ -21,14 +21,16 @@ type authUc struct {
 	accessTokenRepo model.AccessTokenRepository
 	userRepo        model.UserRepository
 	sharedCryptor   common.SharedCryptor
+	workerClient    model.WorkerClient
 }
 
 // NewAuthUsecase returns a new AuthUsecase
-func NewAuthUsecase(accessTokenRepo model.AccessTokenRepository, userRepo model.UserRepository, sharedCryptor common.SharedCryptor) model.AuthUsecase {
+func NewAuthUsecase(accessTokenRepo model.AccessTokenRepository, userRepo model.UserRepository, sharedCryptor common.SharedCryptor, workerClient model.WorkerClient) model.AuthUsecase {
 	return &authUc{
 		accessTokenRepo: accessTokenRepo,
 		userRepo:        userRepo,
 		sharedCryptor:   sharedCryptor,
+		workerClient:    workerClient,
 	}
 }
 
@@ -133,6 +135,10 @@ func (u *authUc) LogIn(ctx context.Context, input *model.LogInInput) (*model.Log
 			Code:    http.StatusInternalServerError,
 			Type:    ErrInternal,
 		}
+	}
+
+	if err := u.registerActiveTokenLimiterTask(ctx, user.ID); err != nil {
+		logger.WithError(err).Error("failed to enqueue enforce active token limiter task")
 	}
 
 	return at.ToLogInOutput(plain), nilErr
@@ -383,4 +389,18 @@ func (u *authUc) ResetPassword(ctx context.Context, input *model.ResetPasswordIn
 		UpdatedAt: user.UpdatedAt,
 		DeletedAt: null.NewTime(user.DeletedAt.Time, user.DeletedAt.Valid),
 	}, nilErr
+}
+
+func (u *authUc) registerActiveTokenLimiterTask(ctx context.Context, userID uuid.UUID) error {
+	// early return if not needed
+	if config.ActiveTokenLimit() <= 0 {
+		return nil
+	}
+
+	_, err := u.workerClient.EnqueueEnforceActiveTokenLimiterTask(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

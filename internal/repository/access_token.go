@@ -75,6 +75,20 @@ func (r *accessTokenRepo) DeleteByID(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
+func (r *accessTokenRepo) DeleteByIDs(ctx context.Context, ids []uuid.UUID, hardDelete bool) error {
+	query := r.db.WithContext(ctx)
+	if hardDelete {
+		query = query.Unscoped()
+	}
+
+	err := query.Delete(&model.AccessToken{}, ids).Error
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 type credential struct {
 	model.AccessToken
 	model.User
@@ -203,6 +217,35 @@ func (r *accessTokenRepo) setCredentialsToCache(ctx context.Context, creds crede
 
 func (r *accessTokenRepo) setNilCredentialsToCache(ctx context.Context, key string) error {
 	if err := r.cacher.Set(ctx, key, model.NilKey, config.AccessTokenActiveDuration()); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *accessTokenRepo) FindByUserID(ctx context.Context, userID uuid.UUID, limit int) ([]model.AccessToken, error) {
+	if limit <= 0 {
+		limit = 1
+	}
+
+	accessTokens := []model.AccessToken{}
+	err := r.db.WithContext(ctx).Where("user_id = ?", userID).Limit(limit).Find(&accessTokens).Error
+	switch err {
+	default:
+		return nil, err
+	case gorm.ErrRecordNotFound:
+		return nil, ErrNotFound
+	case nil:
+		if len(accessTokens) == 0 {
+			return nil, ErrNotFound
+		}
+
+		return accessTokens, nil
+	}
+}
+
+func (r *accessTokenRepo) DeleteCredentialsFromCache(ctx context.Context, tokens []string) error {
+	if err := r.cacher.Del(ctx, tokens); err != nil {
 		return err
 	}
 

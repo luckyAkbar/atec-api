@@ -427,3 +427,189 @@ func TestAccessTokenRepo_FindCredentialByToken(t *testing.T) {
 		})
 	}
 }
+
+func TestAccessTokenRepository_DeleteByIDs(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	mockCacher := mock.NewMockCacher(kit.Ctrl)
+	repo := NewAccessTokenRepository(kit.DB, mockCacher)
+	mock := kit.DBmock
+	ctx := context.Background()
+
+	idsSingle := []uuid.UUID{uuid.New()}
+	idsMulti := []uuid.UUID{uuid.New(), uuid.New()}
+
+	tests := []common.TestStructure{
+		{
+			Name: "ok - hard delete - single",
+			MockFn: func() {
+				mock.ExpectBegin()
+				mock.ExpectExec(`^DELETE FROM .+ WHERE`).
+					WithArgs(idsSingle[0]).
+					WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectCommit()
+			},
+			Run: func() {
+				err := repo.DeleteByIDs(ctx, idsSingle, true)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name: "ok - hard delete - multiple",
+			MockFn: func() {
+				mock.ExpectBegin()
+				mock.ExpectExec(`^DELETE FROM .+ WHERE`).
+					WithArgs(idsMulti[0], idsMulti[1]).
+					WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectCommit()
+			},
+			Run: func() {
+				err := repo.DeleteByIDs(ctx, idsMulti, true)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name: "ok - soft delete - single",
+			MockFn: func() {
+				mock.ExpectBegin()
+				mock.ExpectExec(`^UPDATE "access_tokens" .+ WHERE`).
+					WithArgs(sqlmock.AnyArg(), idsSingle[0]).
+					WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectCommit()
+			},
+			Run: func() {
+				err := repo.DeleteByIDs(ctx, idsSingle, false)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name: "ok - soft delete - multiple",
+			MockFn: func() {
+				mock.ExpectBegin()
+				mock.ExpectExec(`^UPDATE "access_tokens" .+ WHERE`).
+					WithArgs(sqlmock.AnyArg(), idsMulti[0], idsMulti[1]).
+					WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectCommit()
+			},
+			Run: func() {
+				err := repo.DeleteByIDs(ctx, idsMulti, false)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name: "err - hard delete",
+			MockFn: func() {
+				mock.ExpectBegin()
+				mock.ExpectExec(`^DELETE FROM .+ WHERE`).
+					WithArgs(idsSingle[0]).
+					WillReturnResult(sqlmock.NewErrorResult(errors.New("err db")))
+				mock.ExpectRollback()
+			},
+			Run: func() {
+				err := repo.DeleteByIDs(ctx, idsSingle, true)
+				assert.Error(t, err)
+			},
+		},
+		{
+			Name: "err - soft delete",
+			MockFn: func() {
+				mock.ExpectBegin()
+				mock.ExpectExec(`^UPDATE "access_tokens" .+ WHERE`).
+					WithArgs(sqlmock.AnyArg(), idsMulti[0], idsMulti[1]).
+					WillReturnResult(sqlmock.NewErrorResult(errors.New("err db")))
+				mock.ExpectRollback()
+			},
+			Run: func() {
+				err := repo.DeleteByIDs(ctx, idsMulti, false)
+				assert.Error(t, err)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
+
+func TestAccessTokenRepository_FindByUserID(t *testing.T) {
+	kit, closer := common.InitializeRepoTestKit(t)
+	defer closer()
+
+	mockCacher := mock.NewMockCacher(kit.Ctrl)
+	repo := NewAccessTokenRepository(kit.DB, mockCacher)
+	mock := kit.DBmock
+	ctx := context.Background()
+
+	userID := uuid.New()
+	limit := 69
+	tid := uuid.New()
+
+	tests := []common.TestStructure{
+		{
+			Name: "db return error",
+			MockFn: func() {
+				mock.ExpectQuery(`^SELECT .+ FROM "access_tokens" WHERE`).
+					WithArgs(userID).
+					WillReturnError(errors.New("err db"))
+			},
+			Run: func() {
+				_, err := repo.FindByUserID(ctx, userID, limit)
+				assert.Error(t, err)
+			},
+		},
+		{
+			Name: "ok found row > 0",
+			MockFn: func() {
+				mock.ExpectQuery(`^SELECT .+ FROM "access_tokens" WHERE`).
+					WithArgs(userID).
+					WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(tid))
+			},
+			Run: func() {
+				res, err := repo.FindByUserID(ctx, userID, limit)
+				assert.NoError(t, err)
+
+				assert.Equal(t, len(res), 1)
+				assert.Equal(t, res[0].ID, tid)
+			},
+		},
+		{
+			Name: "ok found row = 0",
+			MockFn: func() {
+				mock.ExpectQuery(`^SELECT .+ FROM "access_tokens" WHERE`).
+					WithArgs(userID).
+					WillReturnRows(sqlmock.NewRows([]string{"id"}))
+			},
+			Run: func() {
+				_, err := repo.FindByUserID(ctx, userID, limit)
+				assert.Error(t, err)
+
+				assert.Equal(t, err, ErrNotFound)
+			},
+		},
+		{
+			Name: "gorm return error not found",
+			MockFn: func() {
+				mock.ExpectQuery(`^SELECT .+ FROM "access_tokens" WHERE`).
+					WithArgs(userID).
+					WillReturnError(gorm.ErrRecordNotFound)
+			},
+			Run: func() {
+				_, err := repo.FindByUserID(ctx, userID, limit)
+				assert.Error(t, err)
+
+				assert.Equal(t, err, ErrNotFound)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			tt.MockFn()
+			tt.Run()
+		})
+	}
+}
