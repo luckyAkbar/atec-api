@@ -11,6 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 	custerr "github.com/sweet-go/stdlib/error"
 	"github.com/sweet-go/stdlib/helper"
+	"gopkg.in/guregu/null.v4"
 )
 
 type emailUc struct {
@@ -41,6 +42,11 @@ func (uc *emailUc) Register(ctx context.Context, input *model.RegisterEmailInput
 		}
 	}
 
+	deadline := null.Int{}
+	if input.DeadlineSecond != 0 {
+		deadline = null.NewInt(input.DeadlineSecond, true)
+	}
+
 	email := &model.Email{
 		ID:        uuid.New(),
 		Subject:   input.Subject,
@@ -48,6 +54,7 @@ func (uc *emailUc) Register(ctx context.Context, input *model.RegisterEmailInput
 		To:        input.To,
 		Cc:        input.Cc,
 		Bcc:       input.Bcc,
+		Deadline:  deadline,
 		CreatedAt: time.Now().UTC(),
 		UpdatedAt: time.Now().UTC(),
 	}

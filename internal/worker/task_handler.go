@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -11,6 +12,7 @@ import (
 	"github.com/luckyAkbar/atec-api/internal/model"
 	"github.com/luckyAkbar/atec-api/internal/repository"
 	"github.com/sirupsen/logrus"
+	"github.com/sweet-go/stdlib/helper"
 	"github.com/sweet-go/stdlib/mail"
 	workerPkg "github.com/sweet-go/stdlib/worker"
 	"golang.org/x/time/rate"
@@ -57,6 +59,19 @@ func (th *th) HandleSendEmail(ctx context.Context, task *asynq.Task) error {
 		return nil
 	case nil:
 		break
+	}
+
+	if email.IsAlreadyPastDeadline() {
+		logger.WithError(errors.New("detected a stale email on mailing list")).
+			WithField("email", helper.Dump(email)).
+			Error("unable to send stale email on mailing list, will not be retried")
+		email.UpdatedAt = time.Now().UTC()
+
+		if err := th.mailRepo.Update(ctx, email); err != nil {
+			logger.WithField("id", email.ID).WithError(err).Error("failed to update email data for updated_at field")
+		}
+
+		return nil
 	}
 
 	md, sig, err := th.mailUtil.SendEmail(ctx, &mail.Mail{

@@ -21,6 +21,7 @@ type Email struct {
 	Cc              pq.StringArray `gorm:"type:varchar(255)[]"`
 	Bcc             pq.StringArray `gorm:"type:varchar(255)[]"`
 	SentAt          null.Time
+	Deadline        null.Int
 	ClientSignature null.String
 	Metadata        null.String
 	CreatedAt       time.Time
@@ -64,13 +65,27 @@ func (e *Email) GenericReceipientsBcc() []mail.GenericReceipient {
 	return recipients
 }
 
+// IsAlreadyPastDeadline will report whether since e.CreatedTime until now already passed
+// e.Deadline amount of seconds. If e.Deadline is left unset, will default to return false
+func (e *Email) IsAlreadyPastDeadline() bool {
+	if e.Deadline.Valid {
+		now := time.Now().UTC()
+		if now.Sub(e.CreatedAt) > time.Duration(e.Deadline.Int64)*time.Second {
+			return true
+		}
+	}
+
+	return false
+}
+
 // RegisterEmailInput input to register email
 type RegisterEmailInput struct {
-	Subject string   `validate:"required"`
-	Body    string   `validate:"required"`
-	To      []string `validate:"min=1,unique,dive,email"`
-	Cc      []string `validate:"omitempty,unique,dive,email"`
-	Bcc     []string `validate:"omitempty,unique,dive,email"`
+	Subject        string   `validate:"required"`
+	Body           string   `validate:"required"`
+	To             []string `validate:"min=1,unique,dive,email"`
+	Cc             []string `validate:"omitempty,unique,dive,email"`
+	Bcc            []string `validate:"omitempty,unique,dive,email"`
+	DeadlineSecond int64
 }
 
 // Validate run all the validation function to ensure all the input values are following the defined rules here

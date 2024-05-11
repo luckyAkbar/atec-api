@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
@@ -19,6 +20,7 @@ import (
 	mailMock "github.com/sweet-go/stdlib/mail/mock"
 	workerPkg "github.com/sweet-go/stdlib/worker"
 	"golang.org/x/time/rate"
+	"gopkg.in/guregu/null.v4"
 )
 
 func TestWorker_HandleSendEmail(t *testing.T) {
@@ -42,6 +44,28 @@ func TestWorker_HandleSendEmail(t *testing.T) {
 		To:      pq.StringArray{"test"},
 		Cc:      pq.StringArray{"test"},
 		Bcc:     pq.StringArray{"test"},
+	}
+
+	beforeDeadlineEmail := &model.Email{
+		ID:        id,
+		Subject:   "test",
+		Body:      "test",
+		To:        pq.StringArray{"test"},
+		Cc:        pq.StringArray{"test"},
+		Bcc:       pq.StringArray{"test"},
+		CreatedAt: time.Now().UTC(),
+		Deadline:  null.IntFrom(1),
+	}
+
+	deadlineExceedEmail := &model.Email{
+		ID:        id,
+		Subject:   "test",
+		Body:      "test",
+		To:        pq.StringArray{"test"},
+		Cc:        pq.StringArray{"test"},
+		Bcc:       pq.StringArray{"test"},
+		CreatedAt: time.Now().Add(time.Second * -2).UTC(),
+		Deadline:  null.IntFrom(1),
 	}
 
 	sendEmailInput := &mail.Mail{
@@ -87,6 +111,28 @@ func TestWorker_HandleSendEmail(t *testing.T) {
 			},
 		},
 		{
+			Name: "email is already passed the deadline: success update",
+			MockFn: func() {
+				mockMailRepo.EXPECT().FindByID(ctx, id).Times(1).Return(deadlineExceedEmail, nil)
+				mockMailRepo.EXPECT().Update(ctx, gomock.Any()).Times(1).Return(nil)
+			},
+			Run: func() {
+				err := taskHandler.HandleSendEmail(ctx, task)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name: "email is already passed the deadline: failed update are just reported and ignored",
+			MockFn: func() {
+				mockMailRepo.EXPECT().FindByID(ctx, id).Times(1).Return(deadlineExceedEmail, nil)
+				mockMailRepo.EXPECT().Update(ctx, gomock.Any()).Times(1).Return(errors.New("failed on db"))
+			},
+			Run: func() {
+				err := taskHandler.HandleSendEmail(ctx, task)
+				assert.NoError(t, err)
+			},
+		},
+		{
 			Name: "when email utility returns non nil error, should return error to be retried later",
 			MockFn: func() {
 				mockMailRepo.EXPECT().FindByID(ctx, id).Times(1).Return(email, nil)
@@ -113,6 +159,18 @@ func TestWorker_HandleSendEmail(t *testing.T) {
 			Name: "successfully handle task to sent email",
 			MockFn: func() {
 				mockMailRepo.EXPECT().FindByID(ctx, id).Times(1).Return(email, nil)
+				mockMailUtility.EXPECT().SendEmail(ctx, sendEmailInput).Times(1).Return("metadata", mail.MailgunSignature, nil)
+				mockMailRepo.EXPECT().Update(ctx, gomock.Any()).Times(1).Return(nil)
+			},
+			Run: func() {
+				err := taskHandler.HandleSendEmail(ctx, task)
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name: "successfully handle task to sent email before the deadline",
+			MockFn: func() {
+				mockMailRepo.EXPECT().FindByID(ctx, id).Times(1).Return(beforeDeadlineEmail, nil)
 				mockMailUtility.EXPECT().SendEmail(ctx, sendEmailInput).Times(1).Return("metadata", mail.MailgunSignature, nil)
 				mockMailRepo.EXPECT().Update(ctx, gomock.Any()).Times(1).Return(nil)
 			},

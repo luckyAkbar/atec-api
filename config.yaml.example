@@ -12,6 +12,7 @@ server:
     iv: ""
   user:
     change_password_base_url: ""
+    change_password_expiry_duration_minutes: 15
 
 postgres:
   host: ""

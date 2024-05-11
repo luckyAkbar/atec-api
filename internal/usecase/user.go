@@ -348,7 +348,7 @@ func (u *userUc) InitiateResetPassword(ctx context.Context, userID uuid.UUID) (*
 		}
 	}
 
-	expiryDur := time.Minute * 15
+	expiryDur := time.Minute * time.Duration(config.ChangePasswordExpiryDurationMinutes())
 	key := base64.StdEncoding.EncodeToString([]byte(helper.GenerateUniqueName()))
 	link := fmt.Sprintf("%skey=%s", config.ChangePasswordBaseURL(), key)
 	changePwSess := &model.ChangePasswordSession{
@@ -565,7 +565,8 @@ func generateEmailTemplateForPinVerification(username, email, pin string) *model
 			</p> Untuk mengaktifkan akun Anda, silakan masukan kode PIN berikut</p> <br>
 			<h3><strong>%s</strong></h3>
 		`, username, pin),
-		To: []string{email},
+		To:             []string{email},
+		DeadlineSecond: int64(config.PinExpiryMinutes()) * 60,
 	}
 }
 
@@ -578,6 +579,7 @@ func generateEmailTemplateForResetPassword(username, email, link string) *model.
 			</p>Untuk melanjutkan, silahkan klik: <a href="%s">reset password</a>.</p> <br>
 			<p>Jika anda tidak jadi untuk berniat mereset password, silahkan abaikan email ini dan login menggunakan akun yang sama.</p>
 		`, username, link),
-		To: []string{email},
+		To:             []string{email},
+		DeadlineSecond: int64(config.ChangePasswordExpiryDurationMinutes()) * 60,
 	}
 }
