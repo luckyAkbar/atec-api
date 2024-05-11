@@ -2,6 +2,7 @@ package worker
 
 import (
 	"github.com/hibiken/asynq"
+	"github.com/luckyAkbar/atec-api/internal/common"
 	"github.com/luckyAkbar/atec-api/internal/model"
 	"github.com/sweet-go/stdlib/mail"
 	workerPkg "github.com/sweet-go/stdlib/worker"
@@ -21,6 +22,7 @@ type ServerConfig struct {
 	MailUtil      mail.Utility
 	Limiter       *rate.Limiter
 	MailRepo      model.EmailRepository
+	SharedCryptor common.SharedCryptor
 }
 
 // NewServer return worker server
@@ -31,7 +33,7 @@ func NewServer(redisHost string, cfg ServerConfig) (workerPkg.Server, error) {
 		cfg.SchedulerOpts,
 	)
 
-	th := newTaskHandler(cfg.MailUtil, cfg.Limiter, cfg.MailRepo)
+	th := newTaskHandler(cfg.MailUtil, cfg.Limiter, cfg.MailRepo, cfg.SharedCryptor)
 
 	registerTaskHandler(th)
 

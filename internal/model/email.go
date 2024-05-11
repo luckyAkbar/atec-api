@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/lib/pq"
+	"github.com/luckyAkbar/atec-api/internal/common"
 	"github.com/sweet-go/stdlib/mail"
 	"gopkg.in/guregu/null.v4"
 	"gorm.io/gorm"
@@ -62,6 +63,54 @@ func (e *Email) GenericReceipientsBcc() []mail.GenericReceipient {
 		})
 	}
 	return recipients
+}
+
+// Encrypt is helper function to be called to ensure all necessary
+// field in the Email are encrypted before storing it to data storage
+func (e *Email) Encrypt(cryptor common.SharedCryptor) error {
+	bodyEnc, err := cryptor.Encrypt(e.Body)
+	if err != nil {
+		return err
+	}
+
+	tosEnc := []string{}
+	for _, to := range e.To {
+		toEnc, err := cryptor.Encrypt(to)
+		if err != nil {
+			return err
+		}
+
+		tosEnc = append(tosEnc, toEnc)
+	}
+
+	e.Body = bodyEnc
+	e.To = tosEnc
+
+	return nil
+}
+
+// Decrypt is a helper function to decrypted all the fields that previously encrypted
+// by Encrypt function
+func (e *Email) Decrypt(cryptor common.SharedCryptor) error {
+	bodyDec, err := cryptor.Decrypt(e.Body)
+	if err != nil {
+		return err
+	}
+
+	tosDec := []string{}
+	for _, to := range e.To {
+		toDec, err := cryptor.Decrypt(to)
+		if err != nil {
+			return err
+		}
+
+		tosDec = append(tosDec, toDec)
+	}
+
+	e.Body = bodyDec
+	e.To = tosDec
+
+	return nil
 }
 
 // RegisterEmailInput input to register email

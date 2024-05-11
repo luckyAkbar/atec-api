@@ -3,10 +3,12 @@ package usecase
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/luckyAkbar/atec-api/internal/common"
 	"github.com/luckyAkbar/atec-api/internal/model"
 	"github.com/sirupsen/logrus"
 	custerr "github.com/sweet-go/stdlib/error"
@@ -14,15 +16,17 @@ import (
 )
 
 type emailUc struct {
-	emailRepo    model.EmailRepository
-	workerClient model.WorkerClient
+	emailRepo     model.EmailRepository
+	workerClient  model.WorkerClient
+	sharedCryptor common.SharedCryptor
 }
 
 // NewEmailUsecase satisfy model.EmailUsecase interface
-func NewEmailUsecase(emailRepo model.EmailRepository, workerClient model.WorkerClient) model.EmailUsecase {
+func NewEmailUsecase(emailRepo model.EmailRepository, workerClient model.WorkerClient, sharedCryptor common.SharedCryptor) model.EmailUsecase {
 	return &emailUc{
-		emailRepo:    emailRepo,
-		workerClient: workerClient,
+		emailRepo:     emailRepo,
+		workerClient:  workerClient,
+		sharedCryptor: sharedCryptor,
 	}
 }
 
@@ -52,6 +56,16 @@ func (uc *emailUc) Register(ctx context.Context, input *model.RegisterEmailInput
 		UpdatedAt: time.Now().UTC(),
 	}
 
+	if err := email.Encrypt(uc.sharedCryptor); err != nil {
+		logger.WithError(err).Error("failed to encrypt email on registration")
+		return nil, custerr.ErrChain{
+			Message: fmt.Sprintf("failed to encrypt email data %s", input.Body),
+			Cause:   err,
+			Code:    http.StatusInternalServerError,
+			Type:    ErrInternal,
+		}
+	}
+
 	if err := uc.emailRepo.Create(ctx, email); err != nil {
 		logger.WithError(err).Error("repository layer return error when create emails")
 		return nil, custerr.ErrChain{
@@ -71,6 +85,10 @@ func (uc *emailUc) Register(ctx context.Context, input *model.RegisterEmailInput
 			Code:    http.StatusInternalServerError,
 			Type:    ErrInternal,
 		}
+	}
+
+	if err := email.Decrypt(uc.sharedCryptor); err != nil {
+		logger.WithError(err).Error("failed to decrypt email on registration, may caused receiver to get encrypted data. Skipping...")
 	}
 
 	logger.Debug("received task info: ", helper.Dump(taskInfo))
