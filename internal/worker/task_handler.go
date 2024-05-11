@@ -105,9 +105,9 @@ func (th *th) HandleSendEmail(ctx context.Context, task *asynq.Task) error {
 	return nil
 }
 
-func (th *th) HandleEnforceActiveTokenLimitter(ctx context.Context, task *asynq.Task) error {
+func (th *th) HandleEnforceActiveTokenLimiter(ctx context.Context, task *asynq.Task) error {
 	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
-		"func":    "taskHandler.HandleEnforceActiveTokenLimitter",
+		"func":    "taskHandler.HandleEnforceActiveTokenLimiter",
 		"payload": string(task.Payload()),
 	})
 

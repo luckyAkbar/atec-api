@@ -45,21 +45,21 @@ func (c *client) EnqueueSendEmailTask(ctx context.Context, id uuid.UUID) (*asynq
 	return info, nil
 }
 
-func (c *client) EnqueueEnforceActiveTokenLimitterTask(ctx context.Context, userID uuid.UUID) (*asynq.TaskInfo, error) {
+func (c *client) EnqueueEnforceActiveTokenLimiterTask(ctx context.Context, userID uuid.UUID) (*asynq.TaskInfo, error) {
 	logger := logrus.WithContext(ctx).WithFields(logrus.Fields{
-		"func":  "client.EnqueueEnforceActiveTokenLimitterTask",
+		"func":  "client.EnqueueEnforceActiveTokenLimiterTask",
 		"input": helper.Dump(userID),
 	})
 
 	payload, err := json.Marshal(userID)
 	if err != nil {
-		logger.WithError(err).Error("failed to marshal payload for enqueue enforce active token limitter task")
+		logger.WithError(err).Error("failed to marshal payload for enqueue enforce active token limiter task")
 		return nil, err
 	}
 
 	info, err := c.workerClient.EnqueueTask(ctx,
 		asynq.NewTask(
-			string(model.TaskEnforceActiveTokenLimitter),
+			string(model.TaskEnforceActiveTokenLimiter),
 			payload,
 			asynq.Queue(string(workerPkg.PriorityHigh))))
 

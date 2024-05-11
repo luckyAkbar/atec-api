@@ -212,7 +212,7 @@ func TestAuthUsecase_LogIn(t *testing.T) {
 				mockSharedCryptor.EXPECT().CompareHash(pwDecoded, []byte(input.Password)).Times(1).Return(nil)
 				mockSharedCryptor.EXPECT().CreateSecureToken().Times(1).Return("plain", "crypted", nil)
 				mockAccessTokenRepo.EXPECT().Create(ctx, gomock.Any()).Times(1).Return(nil)
-				mockWorkerClient.EXPECT().EnqueueEnforceActiveTokenLimitterTask(ctx, user.ID).Times(1).Return(&asynq.TaskInfo{}, nil)
+				mockWorkerClient.EXPECT().EnqueueEnforceActiveTokenLimiterTask(ctx, user.ID).Times(1).Return(&asynq.TaskInfo{}, nil)
 			},
 			Run: func() {
 				viper.Set("server.auth.active_token_limit", 10)
@@ -230,7 +230,7 @@ func TestAuthUsecase_LogIn(t *testing.T) {
 				mockSharedCryptor.EXPECT().CompareHash(pwDecoded, []byte(input.Password)).Times(1).Return(nil)
 				mockSharedCryptor.EXPECT().CreateSecureToken().Times(1).Return("plain", "crypted", nil)
 				mockAccessTokenRepo.EXPECT().Create(ctx, gomock.Any()).Times(1).Return(nil)
-				mockWorkerClient.EXPECT().EnqueueEnforceActiveTokenLimitterTask(ctx, user.ID).Times(1).Return(nil, errors.New("err worker"))
+				mockWorkerClient.EXPECT().EnqueueEnforceActiveTokenLimiterTask(ctx, user.ID).Times(1).Return(nil, errors.New("err worker"))
 			},
 			Run: func() {
 				viper.Set("server.auth.active_token_limit", 10)
@@ -248,7 +248,7 @@ func TestAuthUsecase_LogIn(t *testing.T) {
 				mockSharedCryptor.EXPECT().CompareHash(pwDecoded, []byte(input.Password)).Times(1).Return(nil)
 				mockSharedCryptor.EXPECT().CreateSecureToken().Times(1).Return("plain", "crypted", nil)
 				mockAccessTokenRepo.EXPECT().Create(ctx, gomock.Any()).Times(1).Return(nil)
-				//mockWorkerClient.EXPECT().EnqueueEnforceActiveTokenLimitterTask(ctx, user.ID).Times(1).Return(&asynq.TaskInfo{}, nil)
+				//mockWorkerClient.EXPECT().EnqueueEnforceActiveTokenLimiterTask(ctx, user.ID).Times(1).Return(&asynq.TaskInfo{}, nil)
 			},
 			Run: func() {
 				viper.Set("server.auth.active_token_limit", 0)

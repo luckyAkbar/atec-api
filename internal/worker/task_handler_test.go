@@ -205,7 +205,7 @@ func TestTaskHandler_HandleEnforceActiveTokenLimiter(t *testing.T) {
 	payload, err := json.Marshal(id)
 	assert.NoError(t, err)
 
-	task := asynq.NewTask(string(model.TaskEnforceActiveTokenLimitter), payload)
+	task := asynq.NewTask(string(model.TaskEnforceActiveTokenLimiter), payload)
 
 	th := newTaskHandler(mockMailUtility, normalLimiter, mockMailRepo, mockUserRepo, mockAccessTokenRepo)
 
@@ -239,8 +239,8 @@ func TestTaskHandler_HandleEnforceActiveTokenLimiter(t *testing.T) {
 			Name:   "invalid payload -> failed to unmarshal",
 			MockFn: func() {},
 			Run: func() {
-				_task := asynq.NewTask(string(model.TaskEnforceActiveTokenLimitter), []byte("][=-098765321234567890]["))
-				err := th.HandleEnforceActiveTokenLimitter(ctx, _task)
+				_task := asynq.NewTask(string(model.TaskEnforceActiveTokenLimiter), []byte("][=-098765321234567890]["))
+				err := th.HandleEnforceActiveTokenLimiter(ctx, _task)
 
 				assert.Error(t, err)
 				assert.Equal(t, err.Error(), "invalid character ']' looking for beginning of value")
@@ -252,7 +252,7 @@ func TestTaskHandler_HandleEnforceActiveTokenLimiter(t *testing.T) {
 			Run: func() {
 				rateLimited := rate.NewLimiter(0, 0)
 				rlTaskHandler := newTaskHandler(mockMailUtility, rateLimited, mockMailRepo, mockUserRepo, mockAccessTokenRepo)
-				err := rlTaskHandler.HandleEnforceActiveTokenLimitter(ctx, task)
+				err := rlTaskHandler.HandleEnforceActiveTokenLimiter(ctx, task)
 				assert.Error(t, err)
 
 				assert.Equal(t, err, newWorkerRateLimitError())
@@ -264,7 +264,7 @@ func TestTaskHandler_HandleEnforceActiveTokenLimiter(t *testing.T) {
 				mockUserRepo.EXPECT().FindByID(ctx, id).Times(1).Return(nil, errors.New("err db"))
 			},
 			Run: func() {
-				err := th.HandleEnforceActiveTokenLimitter(ctx, task)
+				err := th.HandleEnforceActiveTokenLimiter(ctx, task)
 				assert.Error(t, err)
 			},
 		},
@@ -274,7 +274,7 @@ func TestTaskHandler_HandleEnforceActiveTokenLimiter(t *testing.T) {
 				mockUserRepo.EXPECT().FindByID(ctx, id).Times(1).Return(nil, repository.ErrNotFound)
 			},
 			Run: func() {
-				err := th.HandleEnforceActiveTokenLimitter(ctx, task)
+				err := th.HandleEnforceActiveTokenLimiter(ctx, task)
 				assert.NoError(t, err)
 			},
 		},
@@ -285,7 +285,7 @@ func TestTaskHandler_HandleEnforceActiveTokenLimiter(t *testing.T) {
 				mockAccessTokenRepo.EXPECT().FindByUserID(ctx, user.ID, activeTokenLimit*2).Times(1).Return(nil, errors.New("err db"))
 			},
 			Run: func() {
-				err := th.HandleEnforceActiveTokenLimitter(ctx, task)
+				err := th.HandleEnforceActiveTokenLimiter(ctx, task)
 				assert.Error(t, err)
 			},
 		},
@@ -296,7 +296,7 @@ func TestTaskHandler_HandleEnforceActiveTokenLimiter(t *testing.T) {
 				mockAccessTokenRepo.EXPECT().FindByUserID(ctx, user.ID, activeTokenLimit*2).Times(1).Return(nil, repository.ErrNotFound)
 			},
 			Run: func() {
-				err := th.HandleEnforceActiveTokenLimitter(ctx, task)
+				err := th.HandleEnforceActiveTokenLimiter(ctx, task)
 				assert.NoError(t, err)
 			},
 		},
@@ -307,7 +307,7 @@ func TestTaskHandler_HandleEnforceActiveTokenLimiter(t *testing.T) {
 				mockAccessTokenRepo.EXPECT().FindByUserID(ctx, user.ID, activeTokenLimit*2).Times(1).Return(belowLimitAccessToken, nil)
 			},
 			Run: func() {
-				err := th.HandleEnforceActiveTokenLimitter(ctx, task)
+				err := th.HandleEnforceActiveTokenLimiter(ctx, task)
 				assert.NoError(t, err)
 			},
 		},
@@ -319,7 +319,7 @@ func TestTaskHandler_HandleEnforceActiveTokenLimiter(t *testing.T) {
 				mockAccessTokenRepo.EXPECT().DeleteCredentialsFromCache(ctx, []string{tobeDeletedAccessToken.Token}).Times(1).Return(errors.New("err redis"))
 			},
 			Run: func() {
-				err := th.HandleEnforceActiveTokenLimitter(ctx, task)
+				err := th.HandleEnforceActiveTokenLimiter(ctx, task)
 				assert.Error(t, err)
 			},
 		},
@@ -332,7 +332,7 @@ func TestTaskHandler_HandleEnforceActiveTokenLimiter(t *testing.T) {
 				mockAccessTokenRepo.EXPECT().DeleteByIDs(ctx, []uuid.UUID{tobeDeletedAccessToken.ID}, true).Times(1).Return(errors.New("err db"))
 			},
 			Run: func() {
-				err := th.HandleEnforceActiveTokenLimitter(ctx, task)
+				err := th.HandleEnforceActiveTokenLimiter(ctx, task)
 				assert.Error(t, err)
 			},
 		},
@@ -345,7 +345,7 @@ func TestTaskHandler_HandleEnforceActiveTokenLimiter(t *testing.T) {
 				mockAccessTokenRepo.EXPECT().DeleteByIDs(ctx, []uuid.UUID{tobeDeletedAccessToken.ID}, true).Times(1).Return(nil)
 			},
 			Run: func() {
-				err := th.HandleEnforceActiveTokenLimitter(ctx, task)
+				err := th.HandleEnforceActiveTokenLimiter(ctx, task)
 				assert.NoError(t, err)
 			},
 		},

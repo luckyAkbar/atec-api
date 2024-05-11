@@ -137,7 +137,7 @@ func (u *authUc) LogIn(ctx context.Context, input *model.LogInInput) (*model.Log
 		}
 	}
 
-	if err := u.registerActiveTokenLimitterTask(ctx, user.ID); err != nil {
+	if err := u.registerActiveTokenLimiterTask(ctx, user.ID); err != nil {
 		logger.WithError(err).Error("failed to enqueue enforce active token limiter task")
 	}
 
@@ -391,13 +391,13 @@ func (u *authUc) ResetPassword(ctx context.Context, input *model.ResetPasswordIn
 	}, nilErr
 }
 
-func (u *authUc) registerActiveTokenLimitterTask(ctx context.Context, userID uuid.UUID) error {
+func (u *authUc) registerActiveTokenLimiterTask(ctx context.Context, userID uuid.UUID) error {
 	// early return if not needed
 	if config.ActiveTokenLimit() <= 0 {
 		return nil
 	}
 
-	_, err := u.workerClient.EnqueueEnforceActiveTokenLimitterTask(ctx, userID)
+	_, err := u.workerClient.EnqueueEnforceActiveTokenLimiterTask(ctx, userID)
 	if err != nil {
 		return err
 	}

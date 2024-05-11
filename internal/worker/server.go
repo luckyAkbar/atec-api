@@ -12,7 +12,7 @@ var mux = asynq.NewServeMux()
 
 func registerTaskHandler(taskHandler *th) {
 	mux.HandleFunc(string(model.TaskSendEmail), taskHandler.HandleSendEmail)
-	mux.HandleFunc(string(model.TaskEnforceActiveTokenLimitter), taskHandler.HandleEnforceActiveTokenLimitter)
+	mux.HandleFunc(string(model.TaskEnforceActiveTokenLimiter), taskHandler.HandleEnforceActiveTokenLimiter)
 }
 
 // ServerConfig configuration options for worker server
